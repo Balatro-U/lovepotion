@@ -6,7 +6,7 @@ using namespace love;
 
 ShaderBase* Wrap_Shader::CheckShader(lua_State* L, int index)
 {
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
     FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
     if (logFile) {
         fprintf(logFile, "[WII U DEBUG] Wrap_Shader::CheckShader() CALLED with index=%d\n", index);
@@ -19,7 +19,7 @@ ShaderBase* Wrap_Shader::CheckShader(lua_State* L, int index)
     try {
         ShaderBase* result = luax_checktype<ShaderBase>(L, index);
         
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
         FILE* logFile2 = fopen("fs:/vol/external01/simple_debug.log", "a");
         if (logFile2) {
             fprintf(logFile2, "[WII U DEBUG] Wrap_Shader::CheckShader() - luax_checktype returned: %p\n", result);
@@ -31,7 +31,7 @@ ShaderBase* Wrap_Shader::CheckShader(lua_State* L, int index)
         return result;
         
     } catch (const std::exception& e) {
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
         FILE* logFile3 = fopen("fs:/vol/external01/simple_debug.log", "a");
         if (logFile3) {
             fprintf(logFile3, "[WII U DEBUG] Wrap_Shader::CheckShader() - EXCEPTION: %s\n", e.what());
@@ -41,7 +41,7 @@ ShaderBase* Wrap_Shader::CheckShader(lua_State* L, int index)
 #endif
         throw;
     } catch (...) {
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
         FILE* logFile4 = fopen("fs:/vol/external01/simple_debug.log", "a");
         if (logFile4) {
             fprintf(logFile4, "[WII U DEBUG] Wrap_Shader::CheckShader() - UNKNOWN EXCEPTION\n");

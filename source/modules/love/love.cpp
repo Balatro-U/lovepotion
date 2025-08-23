@@ -213,7 +213,7 @@ static void luax_addcompatibilityalias(lua_State* L, const char* module, const c
 
 int love_initialize(lua_State* L)
 {
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
     FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
     if (logFile) {
         fprintf(logFile, "[WII U DEBUG] love_initialize() - starting module preloading\n");
@@ -224,7 +224,7 @@ int love_initialize(lua_State* L)
 
     for (auto& module : modules)
     {
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
         logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
         if (logFile) {
             fprintf(logFile, "[WII U DEBUG] love_initialize() - preloading module: %s\n", module.name);
@@ -235,7 +235,7 @@ int love_initialize(lua_State* L)
         love::luax_preload(L, module.func, module.name);
     }
 
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
     logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
     if (logFile) {
         fprintf(logFile, "[WII U DEBUG] love_initialize() - all modules preloaded\n");
@@ -286,6 +286,15 @@ int love_initialize(lua_State* L)
 
     lua_pushstring(L, __CONSOLE__);
     lua_setfield(L, -2, "_console");
+
+    // Expose whether this is a debug build to Lua so scripts can gate logs.
+    // This becomes love._debug_build (true in Debug builds, false in Release).
+#if __DEBUG__
+    lua_pushboolean(L, 1);
+#else
+    lua_pushboolean(L, 0);
+#endif
+    lua_setfield(L, -2, "_debug_build");
 
     lua_pushcfunction(L, love_setDeprecationOutput);
     lua_setfield(L, -2, "setDeprecationOutput");
@@ -431,7 +440,7 @@ int love_print(lua_State* L)
 
     std::printf("[LOVE] %s\r\n", result.c_str());
     
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
     // Also log to file for debugging
     FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
     if (logFile == nullptr) {
@@ -446,7 +455,7 @@ int love_print(lua_State* L)
         fflush(logFile);
         fclose(logFile);
     }
-#endif
+#endif    
     
     return 0;
 }

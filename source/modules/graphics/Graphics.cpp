@@ -386,7 +386,7 @@ namespace love
         {
             if (ShaderBase::isDefaultActive())
             {
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
                 static int shaderSwitchCount = 0;
                 shaderSwitchCount++;
                 
@@ -463,7 +463,7 @@ namespace love
 
         if ((state.lastIndexCount == 0 && state.lastVertexCount == 0) || state.flushing)
         {
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
             static int emptyFlushCount = 0;
             emptyFlushCount++;
             if (emptyFlushCount <= 5 || emptyFlushCount % 120 == 0) {
@@ -478,7 +478,7 @@ namespace love
             return;
         }
 
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
         static int realFlushCount = 0;
         realFlushCount++;
         if (realFlushCount <= 10 || realFlushCount % 60 == 0) {
@@ -574,7 +574,7 @@ namespace love
 
     ShaderStageBase* GraphicsBase::newShaderStage(ShaderStageType stage, const std::string& filepath)
     {
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
         FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
         if (logFile) {
             fprintf(logFile, "GraphicsBase::newShaderStage() called - stage: %d (%s), filepath: %s\n", 
@@ -640,7 +640,7 @@ namespace love
                     throw Exception("No shader files provided");
                 }
 
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
                 FILE* logFile2 = fopen("fs:/vol/external01/simple_debug.log", "a");
                 if (logFile2) {
                     fprintf(logFile2, "GraphicsBase::newShader() - creating stage %d (%s) with filepath: %s\n", 
@@ -652,7 +652,7 @@ namespace love
                 
                 stages[index].set(this->newShaderStage(type, filepath), Acquire::NO_RETAIN);
 
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
                 FILE* logFile3 = fopen("fs:/vol/external01/simple_debug.log", "a");
                 if (logFile3) {
                     fprintf(logFile3, "GraphicsBase::newShader() - stage %d (%s) created successfully\n", 
@@ -664,7 +664,7 @@ namespace love
             }
         }
 
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
         FILE* logFile4 = fopen("fs:/vol/external01/simple_debug.log", "a");
         if (logFile4) {
             fprintf(logFile4, "GraphicsBase::newShader() - about to call newShaderInternal()\n");

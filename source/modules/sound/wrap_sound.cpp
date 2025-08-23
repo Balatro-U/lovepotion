@@ -12,7 +12,7 @@ using namespace love;
 
 int Wrap_Sound::newDecoder(lua_State* L)
 {
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
     FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
     if (logFile) {
         fprintf(logFile, "Wrap_Sound::newDecoder() called with %d arguments\n", lua_gettop(L));
@@ -32,7 +32,7 @@ int Wrap_Sound::newDecoder(lua_State* L)
     int bufferSize = luaL_optinteger(L, 2, Decoder::DEFAULT_BUFFER_SIZE);
     Stream* stream = nullptr;
 
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
     FILE* logFile_check = fopen("fs:/vol/external01/simple_debug.log", "a");
     if (logFile_check) {
         fprintf(logFile_check, "newDecoder() - bufferSize: %d, checking if can get file\n", bufferSize);
@@ -43,7 +43,7 @@ int Wrap_Sound::newDecoder(lua_State* L)
 
     if (luax_cangetfile(L, 1))
     {
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
         FILE* logFile_file = fopen("fs:/vol/external01/simple_debug.log", "a");
         if (logFile_file) {
             fprintf(logFile_file, "newDecoder() - can get file, processing file input\n");
@@ -59,7 +59,7 @@ int Wrap_Sound::newDecoder(lua_State* L)
 
         if (source == Decoder::STREAM_FILE)
         {
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
             FILE* logFile_file2 = fopen("fs:/vol/external01/simple_debug.log", "a");
             if (logFile_file2) {
                 fprintf(logFile_file2, "newDecoder() - about to get file and open for reading\n");
@@ -70,7 +70,7 @@ int Wrap_Sound::newDecoder(lua_State* L)
             auto* file = luax_getfile(L, 1);
             luax_catchexcept(L, [&]() { file->open(File::MODE_READ); });
             stream = file;
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
             FILE* logFile_file3 = fopen("fs:/vol/external01/simple_debug.log", "a");
             if (logFile_file3) {
                 fprintf(logFile_file3, "newDecoder() - file opened successfully, stream: %p\n", stream);
@@ -81,7 +81,7 @@ int Wrap_Sound::newDecoder(lua_State* L)
         }
         else
         {
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
             FILE* logFile_data = fopen("fs:/vol/external01/simple_debug.log", "a");
             if (logFile_data) {
                 fprintf(logFile_data, "newDecoder() - creating DataStream from file data\n");
@@ -97,7 +97,7 @@ int Wrap_Sound::newDecoder(lua_State* L)
     }
     else if (luax_istype(L, 1, Data::type))
     {
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
         FILE* logFile_dtype = fopen("fs:/vol/external01/simple_debug.log", "a");
         if (logFile_dtype) {
             fprintf(logFile_dtype, "newDecoder() - processing Data type input\n");
@@ -110,7 +110,7 @@ int Wrap_Sound::newDecoder(lua_State* L)
     }
     else
     {
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
         FILE* logFile_stream = fopen("fs:/vol/external01/simple_debug.log", "a");
         if (logFile_stream) {
             fprintf(logFile_stream, "newDecoder() - processing Stream type input\n");
@@ -124,7 +124,7 @@ int Wrap_Sound::newDecoder(lua_State* L)
 
     Decoder* decoder = nullptr;
 
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
     FILE* logFile_create = fopen("fs:/vol/external01/simple_debug.log", "a");
     if (logFile_create) {
         fprintf(logFile_create, "newDecoder() - about to create decoder with stream: %p, bufferSize: %d\n", stream, bufferSize);
@@ -140,7 +140,7 @@ int Wrap_Sound::newDecoder(lua_State* L)
     );
     // clang-format on
 
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
     FILE* logFile_result = fopen("fs:/vol/external01/simple_debug.log", "a");
     if (logFile_result) {
         fprintf(logFile_result, "newDecoder() - decoder created: %p\n", decoder);
@@ -152,7 +152,7 @@ int Wrap_Sound::newDecoder(lua_State* L)
     luax_pushtype(L, decoder);
     decoder->release();
 
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
     FILE* logFile_end = fopen("fs:/vol/external01/simple_debug.log", "a");
     if (logFile_end) {
         fprintf(logFile_end, "newDecoder() - completed successfully\n");

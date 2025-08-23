@@ -38,7 +38,7 @@ namespace love
 
     void ShaderBase::attachDefault(StandardShader type)
     {
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
         static int attachDefaultCount = 0;
         attachDefaultCount++;
         
@@ -60,7 +60,7 @@ namespace love
 
         if (defaultShader == nullptr)
         {
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
             FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
             if (logFile) {
                 fprintf(logFile, "  WARNING: standardShaders[%d] is NULL, shaders not ready yet\n", type);
@@ -75,7 +75,7 @@ namespace love
 
         if (current != defaultShader)
         {
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
             FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
             if (logFile) {
                 fprintf(logFile, "  Calling attach() on shader %p\n", defaultShader);
@@ -85,7 +85,7 @@ namespace love
 #endif
             defaultShader->attach();
         }
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
         else {
             FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
             if (logFile) {

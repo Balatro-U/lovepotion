@@ -27,7 +27,8 @@ extern "C"
 #include "common/Exception.hpp"
 
 #ifdef __WIIU__
-// Simple logging functions using basic C file I/O
+#if __DEBUG__
+// Simple logging functions using basic C file I/O (enabled in Debug builds only)
 void simpleLog(const char* message) {
     FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
     if (logFile == nullptr) {
@@ -81,6 +82,11 @@ void initSimpleLog() {
         fclose(logFile);
     }
 }
+#else
+// Release build: no-op logging to avoid generating any .log files
+inline void simpleLog(const char*) {}
+inline void initSimpleLog() {}
+#endif
 #endif
 
 enum DoneAction

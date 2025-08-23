@@ -240,13 +240,13 @@ function love.run()
                 if love.draw then love.draw(display_name, stereoscopic_depth) end
                 love.graphics.copyCurrentScanBuffer()
             end
-            print("DEBUG: About to present graphics")
+            if love._debug_build then print("DEBUG: About to present graphics") end
             love.graphics.present()
-            print("DEBUG: Graphics present completed")
+            if love._debug_build then print("DEBUG: Graphics present completed") end
         end
-        print("DEBUG: About to sleep")
+        if love._debug_build then print("DEBUG: About to sleep") end
         if love.timer then love.timer.sleep(0.001) end
-        print("DEBUG: Sleep completed, frame " .. frame_count .. " finished")
+        if love._debug_build then print("DEBUG: Sleep completed, frame " .. frame_count .. " finished") end
     end
 end
 
@@ -263,7 +263,7 @@ local function error_printer(msg, layer)
     local trace = debug.traceback("Error: " .. tostring(msg), 1 + (layer or 1))
     
     -- Add Wii U specific logging for error_printer
-    if love._console_name == "cafe" then
+    if love._console_name == "cafe" and love._debug_build then
         local logFile = io.open("fs:/vol/external01/simple_debug.log", "a")
         if logFile then
             logFile:write("=== ERROR_PRINTER DETAILED LOG ===\n")
@@ -279,7 +279,7 @@ local function error_printer(msg, layer)
     -- Print to console (this may or may not work depending on system state)
     print(trace:gsub("\n[^\n]+$", ""))
     
-    if love._console_name == "cafe" then
+    if love._console_name == "cafe" and love._debug_build then
         local logFile = io.open("fs:/vol/external01/simple_debug.log", "a")
         if logFile then
             logFile:write("error_printer print() call completed\n")
@@ -296,7 +296,7 @@ function love.errhand(msg)
     -- Multiple fallback attempts to ensure the error gets logged somewhere
     local logged = false
     
-    if love._console_name == "cafe" then
+    if love._console_name == "cafe" and love._debug_build then
         -- Try primary log location
         local logFile = io.open("fs:/vol/external01/simple_debug.log", "a")
         if logFile then
@@ -332,7 +332,7 @@ function love.errhand(msg)
         end
         
         -- If primary logging failed, try backup location
-        if not logged then
+    if love._debug_build and not logged then
             local backupLog = io.open("fs:/vol/save/error_backup.log", "a") 
             if backupLog then
                 backupLog:write("BACKUP ERROR LOG - PRIMARY FAILED\n")
@@ -345,7 +345,7 @@ function love.errhand(msg)
         end
         
         -- If file logging completely failed, at least try to print to console
-        if not logged then
+    if love._debug_build and not logged then
             print("CRITICAL ERROR LOGGING FAILED")
             print("Error: " .. tostring(msg))
             print("Trace: " .. tostring(debug.traceback()))
@@ -354,7 +354,7 @@ function love.errhand(msg)
 
     error_printer(msg, 2)
 
-    if love._console_name == "cafe" then
+    if love._console_name == "cafe" and love._debug_build then
         local logFile = io.open("fs:/vol/external01/simple_debug.log", "a")
         if logFile then
             logFile:write("error_printer() completed\n")
@@ -367,7 +367,7 @@ function love.errhand(msg)
     end
 
     if not love.window or not love.graphics or not love.event then
-        if love._console_name == "cafe" then
+    if love._console_name == "cafe" and love._debug_build then
             local logFile = io.open("fs:/vol/external01/simple_debug.log", "a")
             if logFile then
                 logFile:write("CRITICAL: Essential modules missing - cannot display error screen\n")
@@ -408,7 +408,7 @@ end
 function love.errhand_create_error_screen(msg)
 
     if not love.graphics.isCreated() or not love.window.isOpen() then
-        if love._console_name == "cafe" then
+        if love._console_name == "cafe" and love._debug_build then
             local logFile = io.open("fs:/vol/external01/simple_debug.log", "a")
             if logFile then
                 logFile:write("Graphics not created or window not open, trying to set mode\n")
@@ -419,7 +419,7 @@ function love.errhand_create_error_screen(msg)
         
         local success, status = pcall(love.window.setMode, 800, 600)
         if not success or not status then
-            if love._console_name == "cafe" then
+            if love._console_name == "cafe" and love._debug_build then
                 local logFile = io.open("fs:/vol/external01/simple_debug.log", "a")
                 if logFile then
                     logFile:write("EARLY RETURN: Failed to set window mode\n")
@@ -431,7 +431,7 @@ function love.errhand_create_error_screen(msg)
         end
     end
 
-    if love._console_name == "cafe" then
+    if love._console_name == "cafe" and love._debug_build then
         local logFile = io.open("fs:/vol/external01/simple_debug.log", "a")
         if logFile then
             logFile:write("About to reset graphics and continue with error display\n")
@@ -461,7 +461,7 @@ function love.errhand_create_error_screen(msg)
     
     -- Use larger font for Wii U since it's displayed on TV and needs to be readable
     local font_size = 15
-    if love._console_name == "cafe" then
+    if love._console_name == "cafe" and love._debug_build then
         font_size = 32  -- Much larger for TV display
         
         local logFile = io.open("fs:/vol/external01/simple_debug.log", "a")
@@ -510,7 +510,7 @@ function love.errhand_create_error_screen(msg)
     p = p:gsub("%[string \"(.-)\"%]", "%1")
 
     local function draw()
-        if love._console_name == "cafe" then
+    if love._console_name == "cafe" and love._debug_build then
             local logFile = io.open("fs:/vol/external01/simple_debug.log", "a")
             if logFile then
                 logFile:write("=== ERROR SCREEN DRAW() CALLED ===\n")
@@ -521,7 +521,7 @@ function love.errhand_create_error_screen(msg)
         end
         
         if not love.graphics.isActive() then 
-            if love._console_name == "cafe" then
+            if love._console_name == "cafe" and love._debug_build then
                 local logFile = io.open("fs:/vol/external01/simple_debug.log", "a")
                 if logFile then
                     logFile:write("EARLY RETURN: Graphics not active\n")
@@ -534,7 +534,7 @@ function love.errhand_create_error_screen(msg)
         
         local pos = 70
         
-        if love._console_name == "cafe" then
+    if love._console_name == "cafe" and love._debug_build then
             local logFile = io.open("fs:/vol/external01/simple_debug.log", "a")
             if logFile then
                 logFile:write("About to draw blue error screen\n")
@@ -550,7 +550,7 @@ function love.errhand_create_error_screen(msg)
         love.graphics.printf(p, pos, pos, love.graphics.getWidth() - pos)
         love.graphics.present()
         
-        if love._console_name == "cafe" then
+    if love._console_name == "cafe" and love._debug_build then
             local logFile = io.open("fs:/vol/external01/simple_debug.log", "a")
             if logFile then
                 logFile:write("Blue error screen draw completed\n")

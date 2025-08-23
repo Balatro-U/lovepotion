@@ -22,7 +22,7 @@ namespace love
     Shader::Shader(StrongRef<ShaderStageBase> _stages[SHADERSTAGE_MAX_ENUM], const CompileOptions& options) :
         ShaderBase(_stages, options)
     {
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
         FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
         if (logFile) {
             fprintf(logFile, "Shader::Shader() constructor called\n");
@@ -31,7 +31,7 @@ namespace love
         }
 #endif
         this->loadVolatile();
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
         FILE* logFile2 = fopen("fs:/vol/external01/simple_debug.log", "a");
         if (logFile2) {
             fprintf(logFile2, "Shader::Shader() loadVolatile() completed\n");
@@ -117,7 +117,7 @@ namespace love
 
     bool Shader::loadVolatile()
     {
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
         FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
         if (logFile) {
             fprintf(logFile, "Shader::loadVolatile() starting\n");
@@ -130,7 +130,7 @@ namespace love
         {
             if (stage.get() != nullptr)
             {
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
                 FILE* logFile2 = fopen("fs:/vol/external01/simple_debug.log", "a");
                 if (logFile2) {
                     fprintf(logFile2, "Shader::loadVolatile() - loading stage %p\n", stage.get());
@@ -139,7 +139,7 @@ namespace love
                 }
 #endif
                 bool stageLoadResult = ((ShaderStage*)stage.get())->loadVolatile();
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
                 FILE* logFile2b = fopen("fs:/vol/external01/simple_debug.log", "a");
                 if (logFile2b) {
                     fprintf(logFile2b, "Shader::loadVolatile() - stage %p loadVolatile() returned: %s\n", 
@@ -149,7 +149,7 @@ namespace love
                 }
 #endif
                 if (!stageLoadResult) {
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
                     FILE* logFile2c = fopen("fs:/vol/external01/simple_debug.log", "a");
                     if (logFile2c) {
                         fprintf(logFile2c, "Shader::loadVolatile() - STAGE LOAD FAILED! Aborting shader load.\n");

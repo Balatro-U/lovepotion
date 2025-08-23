@@ -30,12 +30,14 @@ namespace love
     Graphics::Graphics() : GraphicsBase("love.graphics.gx2")
     {
 #ifdef __WIIU__
+#if __DEBUG__
         FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
         if (logFile) {
             fprintf(logFile, "Graphics constructor called\n");
             fflush(logFile);
             fclose(logFile);
         }
+#endif
 
 #ifdef USE_PPC_DEBUGGER
         // Initialize PPC debugger first for maximum debugging coverage
@@ -54,12 +56,14 @@ namespace love
         if (CafeGLSLCompiler::Initialize())
         {
 #ifdef __WIIU__
+#if __DEBUG__
             FILE* cafeLogFile = fopen("fs:/vol/external01/simple_debug.log", "a");
             if (cafeLogFile) {
                 fprintf(cafeLogFile, "CafeGLSL: Shader compiler initialized successfully\n");
                 fflush(cafeLogFile);
                 fclose(cafeLogFile);
             }
+#endif
 #ifdef USE_PPC_DEBUGGER
             PPCDebugger::DebugPoint("CAFEGLSL_INIT_SUCCESS", "CafeGLSL loaded successfully");
 #endif
@@ -68,12 +72,14 @@ namespace love
         else
         {
 #ifdef __WIIU__
+#if __DEBUG__
             FILE* cafeLogFile = fopen("fs:/vol/external01/simple_debug.log", "a");
             if (cafeLogFile) {
                 fprintf(cafeLogFile, "CafeGLSL: Warning - Shader compiler not available, using fallback rendering\n");
                 fflush(cafeLogFile);
                 fclose(cafeLogFile);
             }
+#endif
 #ifdef USE_PPC_DEBUGGER
             PPCDebugger::CriticalError("CafeGLSL failed to initialize - this may cause rendering issues", true);
 #endif
@@ -87,12 +93,14 @@ namespace love
 #ifdef USE_PPC_DEBUGGER
         PPCDebugger::DebugPoint("WINDOW_INSTANCE_GET", "Retrieved window instance");
 #endif
+#if __DEBUG__
         FILE* logFile2 = fopen("fs:/vol/external01/simple_debug.log", "a");
         if (logFile2) {
             fprintf(logFile2, "Graphics: got window instance %p\n", (void*)window);
             fflush(logFile2);
             fclose(logFile2);
         }
+#endif
 #endif
 
         if (window != nullptr)
@@ -101,12 +109,14 @@ namespace love
 #ifdef USE_PPC_DEBUGGER
             PPCDebugger::DebugPoint("WINDOW_SET_GRAPHICS", "Setting graphics on window");
 #endif
+#if __DEBUG__
             FILE* logFile3 = fopen("fs:/vol/external01/simple_debug.log", "a");
             if (logFile3) {
                 fprintf(logFile3, "Graphics: setting graphics on window\n");
                 fflush(logFile3);
                 fclose(logFile3);
             }
+#endif
 #endif
             window->setGraphics(this);
 
@@ -116,6 +126,7 @@ namespace love
 #ifdef USE_PPC_DEBUGGER
                 PPCDebugger::DebugPoint("WINDOW_IS_OPEN", "Window is open, proceeding with initialization");
 #endif
+#if __DEBUG__
                 FILE* logFile4 = fopen("fs:/vol/external01/simple_debug.log", "a");
                 if (logFile4) {
                     fprintf(logFile4, "Graphics: window is open, setting window parameters\n");
@@ -123,12 +134,14 @@ namespace love
                     fclose(logFile4);
                 }
 #endif
+#endif
                 int width, height;
                 Window::WindowSettings settings {};
 
                 window->getWindow(width, height, settings);
                 window->setWindow(width, height, &settings);
 #ifdef __WIIU__
+#if __DEBUG__
                 FILE* logFile5 = fopen("fs:/vol/external01/simple_debug.log", "a");
                 if (logFile5) {
                     fprintf(logFile5, "Graphics: window parameters set (%dx%d)\n", width, height);
@@ -136,15 +149,18 @@ namespace love
                     fclose(logFile5);
                 }
 #endif
+#endif
             }
         }
 #ifdef __WIIU__
+#if __DEBUG__
         FILE* logFile6 = fopen("fs:/vol/external01/simple_debug.log", "a");
         if (logFile6) {
             fprintf(logFile6, "Graphics constructor completed\n");
             fflush(logFile6);
             fclose(logFile6);
         }
+#endif
 #endif
     }
 
@@ -154,12 +170,14 @@ namespace love
         // Cleanup CafeGLSL shader compiler
         CafeGLSLCompiler::Shutdown();
 #ifdef __WIIU__
+#if __DEBUG__
         FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
         if (logFile) {
             fprintf(logFile, "CafeGLSL: Shader compiler shutdown completed\n");
             fflush(logFile);
             fclose(logFile);
         }
+#endif
 #endif
 #endif
     }
@@ -218,6 +236,7 @@ namespace love
     void Graphics::clear(OptionalColor color, OptionalInt stencil, OptionalDouble depth)
     {
 #ifdef __WIIU__
+#if __DEBUG__
         FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
         if (logFile) {
             if (color.hasValue) {
@@ -229,6 +248,7 @@ namespace love
             fflush(logFile);
             fclose(logFile);
         }
+#endif
 #endif
         
         // Ensure we're in a frame before clearing
@@ -277,12 +297,14 @@ namespace love
         gx2.bindFramebuffer(&gx2.getInternalBackbuffer());
         
 #ifdef __WIIU__
+#if __DEBUG__
         FILE* logFile2 = fopen("fs:/vol/external01/simple_debug.log", "a");
         if (logFile2) {
             fprintf(logFile2, "Graphics::clear() completed\n");
             fflush(logFile2);
             fclose(logFile2);
         }
+#endif
 #endif
     }
 
@@ -337,12 +359,14 @@ namespace love
     void Graphics::present(void* screenshotCallbackData)
     {
 #ifdef __WIIU__
+#if __DEBUG__
         FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
         if (logFile) {
             fprintf(logFile, "Graphics::present() called - about to flush batched draws\n");
             fflush(logFile);
             fclose(logFile);
         }
+#endif
 #endif
         
         if (!this->isActive())
@@ -359,6 +383,7 @@ namespace love
         if (CafeGLSLCompiler::IsAvailable())
         {
 #ifdef __WIIU__
+#if __DEBUG__
             static int cafeGLSLFrameCount = 0;
             cafeGLSLFrameCount++;
             if (cafeGLSLFrameCount <= 5 || cafeGLSLFrameCount % 120 == 0) {
@@ -370,11 +395,13 @@ namespace love
                 }
             }
 #endif
+#endif
             // TODO: Add enhanced UI shader rendering here
         }
 #endif
 
 #ifdef __WIIU__
+#if __DEBUG__
         static int presentFlushCount = 0;
         presentFlushCount++;
         if (presentFlushCount <= 10 || presentFlushCount % 60 == 0) {
@@ -386,8 +413,10 @@ namespace love
             }
         }
 #endif
+#endif
 
 #ifdef __WIIU__
+#if __DEBUG__
         FILE* logFile3 = fopen("fs:/vol/external01/simple_debug.log", "a");
         if (logFile3) {
             fprintf(logFile3, "Graphics::present() - about to call gx2.present()\n");
@@ -395,16 +424,19 @@ namespace love
             fclose(logFile3);
         }
 #endif
+#endif
 
         gx2.present();
 
 #ifdef __WIIU__
+#if __DEBUG__
         FILE* logFile4 = fopen("fs:/vol/external01/simple_debug.log", "a");
         if (logFile4) {
             fprintf(logFile4, "Graphics::present() completed\n");
             fflush(logFile4);
             fclose(logFile4);
         }
+#endif
 #endif
 
         this->drawCalls        = 0;
@@ -542,13 +574,15 @@ namespace love
     ShaderStageBase* Graphics::newShaderStageInternal(ShaderStageType stage, const std::string& filepath)
     {
 #ifdef __WIIU__
-        FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
-        if (logFile) {
-            fprintf(logFile, "Graphics::newShaderStageInternal() called - stage: %d (%s), filepath: %s\n", 
-                    stage, (stage == 0 ? "VERTEX" : "PIXEL"), filepath.c_str());
-            fflush(logFile);
-            fclose(logFile);
-        }
+#if __DEBUG__
+    FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+    if (logFile) {
+        fprintf(logFile, "Graphics::newShaderStageInternal() called - stage: %d (%s), filepath: %s\n", 
+            stage, (stage == 0 ? "VERTEX" : "PIXEL"), filepath.c_str());
+        fflush(logFile);
+        fclose(logFile);
+    }
+#endif
 #endif
         return new ShaderStage(stage, filepath);
     }
@@ -557,6 +591,7 @@ namespace love
                                             const ShaderBase::CompileOptions& options)
     {
 #ifdef __WIIU__
+#if __DEBUG__
         FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
         if (logFile) {
             fprintf(logFile, "Graphics::newShaderInternal() called - about to create new Shader\n");
@@ -564,14 +599,17 @@ namespace love
             fclose(logFile);
         }
 #endif
+#endif
         Shader* shader = new Shader(stages, options);
 #ifdef __WIIU__
+#if __DEBUG__
         FILE* logFile2 = fopen("fs:/vol/external01/simple_debug.log", "a");
         if (logFile2) {
             fprintf(logFile2, "Graphics::newShaderInternal() - Shader created successfully: %p\n", shader);
             fflush(logFile2);
             fclose(logFile2);
         }
+#endif
 #endif
         return shader;
     }
@@ -580,37 +618,43 @@ namespace love
                            bool backBufferDepth, int msaa)
     {
 #ifdef __WIIU__
-        FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
-        if (logFile) {
-            fprintf(logFile, "Graphics::setMode() called with %dx%d (pixel: %dx%d)\n", 
-                    width, height, pixelWidth, pixelHeight);
-            fprintf(logFile, "Graphics::setMode() - current transform matrix dump:\n");
-            fflush(logFile);
-            fclose(logFile);
-        }
+#if __DEBUG__
+    FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+    if (logFile) {
+        fprintf(logFile, "Graphics::setMode() called with %dx%d (pixel: %dx%d)\n", 
+            width, height, pixelWidth, pixelHeight);
+        fprintf(logFile, "Graphics::setMode() - current transform matrix dump:\n");
+        fflush(logFile);
+        fclose(logFile);
+    }
+#endif
 #endif
         
         gx2.initialize();
 
 #ifdef __WIIU__
-        FILE* logFile2 = fopen("fs:/vol/external01/simple_debug.log", "a");
-        if (logFile2) {
-            fprintf(logFile2, "Graphics: gx2.initialize() completed\n");
-            fflush(logFile2);
-            fclose(logFile2);
-        }
+#if __DEBUG__
+    FILE* logFile2 = fopen("fs:/vol/external01/simple_debug.log", "a");
+    if (logFile2) {
+        fprintf(logFile2, "Graphics: gx2.initialize() completed\n");
+        fflush(logFile2);
+        fclose(logFile2);
+    }
+#endif
 #endif
 
         this->created = true;
         this->initCapabilities();
 
 #ifdef __WIIU__
-        FILE* logFile3 = fopen("fs:/vol/external01/simple_debug.log", "a");
-        if (logFile3) {
-            fprintf(logFile3, "Graphics: initCapabilities() completed\n");
-            fflush(logFile3);
-            fclose(logFile3);
-        }
+#if __DEBUG__
+    FILE* logFile3 = fopen("fs:/vol/external01/simple_debug.log", "a");
+    if (logFile3) {
+        fprintf(logFile3, "Graphics: initCapabilities() completed\n");
+        fflush(logFile3);
+        fclose(logFile3);
+    }
+#endif
 #endif
 
         // gx2.setupContext();
@@ -620,6 +664,7 @@ namespace love
             if (this->batchedDrawState.vertexBuffer == nullptr)
             {
 #ifdef __WIIU__
+#if __DEBUG__
                 FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
                 if (logFile) {
                     fprintf(logFile, "Graphics: About to create index buffer with size %d\n", INIT_INDEX_BUFFER_SIZE);
@@ -627,8 +672,10 @@ namespace love
                     fclose(logFile);
                 }
 #endif
+#endif
                 this->batchedDrawState.indexBuffer  = newIndexBuffer(INIT_INDEX_BUFFER_SIZE);
 #ifdef __WIIU__
+#if __DEBUG__
                 FILE* logFile2 = fopen("fs:/vol/external01/simple_debug.log", "a");
                 if (logFile2) {
                     fprintf(logFile2, "Graphics: Index buffer created successfully\n");
@@ -636,8 +683,10 @@ namespace love
                     fclose(logFile2);
                 }
 #endif
+#endif
                 
 #ifdef __WIIU__
+#if __DEBUG__
                 FILE* logFile3 = fopen("fs:/vol/external01/simple_debug.log", "a");
                 if (logFile3) {
                     fprintf(logFile3, "Graphics: About to create vertex buffer with size %d\n", INIT_VERTEX_BUFFER_SIZE);
@@ -645,14 +694,17 @@ namespace love
                     fclose(logFile3);
                 }
 #endif
+#endif
                 this->batchedDrawState.vertexBuffer = newVertexBuffer(INIT_VERTEX_BUFFER_SIZE);
 #ifdef __WIIU__
+#if __DEBUG__
                 FILE* logFile4 = fopen("fs:/vol/external01/simple_debug.log", "a");
                 if (logFile4) {
                     fprintf(logFile4, "Graphics: Vertex buffer created successfully\n");
                     fflush(logFile4);
                     fclose(logFile4);
                 }
+#endif
 #endif
             }
         }
@@ -662,6 +714,7 @@ namespace love
         }
 
 #ifdef __WIIU__
+#if __DEBUG__
         FILE* logFile5 = fopen("fs:/vol/external01/simple_debug.log", "a");
         if (logFile5) {
             fprintf(logFile5, "Graphics: Buffers created, about to load volatile objects\n");
@@ -669,11 +722,13 @@ namespace love
             fclose(logFile5);
         }
 #endif
+#endif
 
         if (!Volatile::loadAll())
             std::printf("Failed to load all volatile objects.\n");
 
 #ifdef __WIIU__
+#if __DEBUG__
         FILE* logFile6 = fopen("fs:/vol/external01/simple_debug.log", "a");
         if (logFile6) {
             fprintf(logFile6, "Graphics: Volatile objects loaded, about to restore state\n");
@@ -681,10 +736,12 @@ namespace love
             fclose(logFile6);
         }
 #endif
+#endif
 
         this->restoreState(this->states.back());
 
 #ifdef __WIIU__
+#if __DEBUG__
         FILE* logFile7 = fopen("fs:/vol/external01/simple_debug.log", "a");
         if (logFile7) {
             fprintf(logFile7, "Graphics: State restored, about to create standard shaders\n");
@@ -692,12 +749,14 @@ namespace love
             fclose(logFile7);
         }
 #endif
+#endif
 
         for (int index = 0; index < ShaderBase::STANDARD_MAX_ENUM; index++)
         {
             auto type = (Shader::StandardShader)index;
 
 #ifdef __WIIU__
+#if __DEBUG__
             FILE* logFile8 = fopen("fs:/vol/external01/simple_debug.log", "a");
             if (logFile8) {
                 fprintf(logFile8, "Graphics: Creating standard shader %d\n", index);
@@ -715,6 +774,7 @@ namespace love
                 stages.push_back(Shader::getDefaultStagePath(type, SHADERSTAGE_PIXEL));
 
 #ifdef __WIIU__
+#if __DEBUG__
                 FILE* logFile9 = fopen("fs:/vol/external01/simple_debug.log", "a");
                 if (logFile9) {
                     fprintf(logFile9, "Graphics: About to create shader %d with stages\n", index);
@@ -727,6 +787,7 @@ namespace love
                 {
                     Shader::standardShaders[type] = this->newShader(stages, options);
 #ifdef __WIIU__
+#if __DEBUG__
                     FILE* logFile10 = fopen("fs:/vol/external01/simple_debug.log", "a");
                     if (logFile10) {
                         fprintf(logFile10, "Graphics: Shader %d created successfully\n", index);
@@ -738,6 +799,7 @@ namespace love
                 catch (const std::exception& e)
                 {
 #ifdef __WIIU__
+#if __DEBUG__
                     FILE* logFile11 = fopen("fs:/vol/external01/simple_debug.log", "a");
                     if (logFile11) {
                         fprintf(logFile11, "Graphics: Exception creating shader %d: %s\n", index, e.what());
@@ -751,6 +813,7 @@ namespace love
         }
 
 #ifdef __WIIU__
+#if __DEBUG__
         FILE* logFile12 = fopen("fs:/vol/external01/simple_debug.log", "a");
         if (logFile12) {
             fprintf(logFile12, "Graphics: All standard shaders created, about to attach default shader\n");
@@ -763,6 +826,7 @@ namespace love
             Shader::standardShaders[Shader::STANDARD_DEFAULT]->attach();
 
 #ifdef __WIIU__
+#if __DEBUG__
         FILE* logFile13 = fopen("fs:/vol/external01/simple_debug.log", "a");
         if (logFile13) {
             fprintf(logFile13, "Graphics: Default shader attached, setMode() completed successfully\n");

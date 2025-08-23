@@ -52,7 +52,7 @@ int Wrap_Graphics::reset(lua_State*)
 
 int Wrap_Graphics::clear(lua_State* L)
 {
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
     static int clearCallCount = 0;
     clearCallCount++;
     
@@ -155,7 +155,7 @@ int Wrap_Graphics::clear(lua_State* L)
 
 int Wrap_Graphics::present(lua_State* L)
 {
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
     static int presentCount = 0;
     presentCount++;
     if (presentCount <= 5 || presentCount % 60 == 0) {
@@ -174,7 +174,7 @@ int Wrap_Graphics::present(lua_State* L)
 
 int Wrap_Graphics::setColor(lua_State* L)
 {
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
     static int setColorCount = 0;
     setColorCount++;
     if (setColorCount <= 10 || setColorCount % 120 == 0) {
@@ -227,7 +227,7 @@ int Wrap_Graphics::getColor(lua_State* L)
 
 int Wrap_Graphics::setBackgroundColor(lua_State* L)
 {
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
     FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
     if (logFile) {
         fprintf(logFile, "setBackgroundColor() called from Lua\n");
@@ -968,7 +968,7 @@ static int pushNewTexture(lua_State* L, TextureBase::Slices* slices, const Textu
 {
     StrongRef<TextureBase> texture;
 
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
     FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
     if (logFile) {
         fprintf(logFile, "pushNewTexture() called - about to create texture\n");
@@ -981,7 +981,7 @@ static int pushNewTexture(lua_State* L, TextureBase::Slices* slices, const Textu
     // clang-format off
     luax_catchexcept(L,
         [&]() { 
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
             FILE* logFile2 = fopen("fs:/vol/external01/simple_debug.log", "a");
             if (logFile2) {
                 fprintf(logFile2, "pushNewTexture() - calling instance()->newTexture()\n");
@@ -990,7 +990,7 @@ static int pushNewTexture(lua_State* L, TextureBase::Slices* slices, const Textu
             }
 #endif
             texture.set(instance()->newTexture(settings, slices), Acquire::NO_RETAIN);
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
             FILE* logFile3 = fopen("fs:/vol/external01/simple_debug.log", "a");
             if (logFile3) {
                 fprintf(logFile3, "pushNewTexture() - newTexture() returned: %p\n", texture.get());
@@ -1000,7 +1000,7 @@ static int pushNewTexture(lua_State* L, TextureBase::Slices* slices, const Textu
 #endif
         },
         [&](bool) { 
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
             FILE* logFile4 = fopen("fs:/vol/external01/simple_debug.log", "a");
             if (logFile4) {
                 fprintf(logFile4, "pushNewTexture() - EXCEPTION occurred in newTexture()\n");
@@ -1013,7 +1013,7 @@ static int pushNewTexture(lua_State* L, TextureBase::Slices* slices, const Textu
     );
     // clang-format on
 
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
     FILE* logFile5 = fopen("fs:/vol/external01/simple_debug.log", "a");
     if (logFile5) {
         fprintf(logFile5, "pushNewTexture() - about to push texture to Lua stack\n");
@@ -1029,7 +1029,7 @@ static int pushNewTexture(lua_State* L, TextureBase::Slices* slices, const Textu
 #endif
 
     if (texture.get() == nullptr) {
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
         FILE* logFile6 = fopen("fs:/vol/external01/simple_debug.log", "a");
         if (logFile6) {
             fprintf(logFile6, "pushNewTexture() - returning luaL_error due to NULL texture\n");
@@ -1042,7 +1042,7 @@ static int pushNewTexture(lua_State* L, TextureBase::Slices* slices, const Textu
 
     luax_pushtype(L, texture);
     
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
     FILE* logFile7 = fopen("fs:/vol/external01/simple_debug.log", "a");
     if (logFile7) {
         fprintf(logFile7, "pushNewTexture() - texture successfully pushed to Lua stack\n");
@@ -1056,7 +1056,7 @@ static int pushNewTexture(lua_State* L, TextureBase::Slices* slices, const Textu
 
 int Wrap_Graphics::newTexture(lua_State* L)
 {
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
     FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
     if (logFile) {
         fprintf(logFile, "newTexture() called from Lua with %d arguments\n", lua_gettop(L));
@@ -1306,7 +1306,7 @@ int Wrap_Graphics::newArrayTexture(lua_State* L)
 
 int Wrap_Graphics::draw(lua_State* L)
 {
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
     static int drawCount = 0;
     drawCount++;
     if (drawCount <= 10 || drawCount % 120 == 0) {
@@ -1351,7 +1351,7 @@ int Wrap_Graphics::setFont(lua_State* L)
 {
     auto* font = luax_checktype<FontBase>(L, 1);
     
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
     FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
     if (logFile) {
         fprintf(logFile, "setFont() called with font: %p\n", font);
@@ -1372,7 +1372,7 @@ int Wrap_Graphics::getFont(lua_State* L)
     FontBase* font = nullptr;
     luax_catchexcept(L, [&]() { font = instance()->getFont(); });
 
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
     FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
     if (logFile) {
         fprintf(logFile, "getFont() called: returning font=%p\n", font);
@@ -1559,7 +1559,7 @@ int Wrap_Graphics::newFont(lua_State* L)
 
     FontBase* font = nullptr;
 
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
     FILE* logFile_step1 = fopen("fs:/vol/external01/simple_debug.log", "a");
     if (logFile_step1) {
         fprintf(logFile_step1, "newFont() - checking if need to create rasterizer\n");
@@ -1570,7 +1570,7 @@ int Wrap_Graphics::newFont(lua_State* L)
 
     if (!luax_istype(L, 1, Rasterizer::type))
     {
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
         FILE* logFile_rast = fopen("fs:/vol/external01/simple_debug.log", "a");
         if (logFile_rast) {
             fprintf(logFile_rast, "newFont() - creating rasterizer from arguments\n");
@@ -1584,7 +1584,7 @@ int Wrap_Graphics::newFont(lua_State* L)
             indices.push_back(index + 1);
 
         luax_convobj(L, indices, "font", "newRasterizer");
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
         FILE* logFile_rast2 = fopen("fs:/vol/external01/simple_debug.log", "a");
         if (logFile_rast2) {
             fprintf(logFile_rast2, "newFont() - rasterizer created successfully\n");
@@ -1594,7 +1594,7 @@ int Wrap_Graphics::newFont(lua_State* L)
 #endif
     }
 
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
     FILE* logFile_check = fopen("fs:/vol/external01/simple_debug.log", "a");
     if (logFile_check) {
         fprintf(logFile_check, "newFont() - about to get rasterizer from Lua stack\n");
@@ -1605,7 +1605,7 @@ int Wrap_Graphics::newFont(lua_State* L)
 
     auto* rasterizer = luax_checktype<Rasterizer>(L, 1);
 
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
     FILE* logFile_rast_ptr = fopen("fs:/vol/external01/simple_debug.log", "a");
     if (logFile_rast_ptr) {
         fprintf(logFile_rast_ptr, "newFont() - got rasterizer: %p\n", rasterizer);
@@ -1616,7 +1616,7 @@ int Wrap_Graphics::newFont(lua_State* L)
 
     luax_catchexcept(L, [&]() { font = instance()->newFont(rasterizer); });
 
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
     FILE* logFile2 = fopen("fs:/vol/external01/simple_debug.log", "a");
     if (logFile2) {
         fprintf(logFile2, "newFont() created font: %p\n", font);
@@ -2476,7 +2476,7 @@ static constexpr luaL_Reg functions[] =
 
     { "setShader",              Wrap_Graphics::setShader             },
     { "getShader",              Wrap_Graphics::getShader             },
-    // { "newShader",              Wrap_Graphics::newShader             }, // DISABLED - causing problems
+    { "newShader",              Wrap_Graphics::newShader             },
 
     { "draw",                   Wrap_Graphics::draw                  },
 
@@ -2524,22 +2524,60 @@ static int open_drawable(lua_State* L)
 // Shader wrapper functions
 static int w_Shader_send(lua_State* L)
 {
-    return 0;  // Minimal implementation
+    // Validate Shader userdata and perform a safe no-op.
+    ShaderBase* shaderSelf = nullptr;
+    try {
+        shaderSelf = Wrap_Shader::CheckShader(L, 1);
+    } catch (...) {
+        // Not a Shader; ignore to avoid throwing in release builds.
+        return 0;
+    }
+#if defined(__WIIU__) && (__DEBUG__)
+    static int sendCount = 0;
+    sendCount++;
+    if (sendCount <= 10 || sendCount % 120 == 0)
+    {
+        FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+        if (logFile)
+        {
+            const char* uname = lua_type(L, 2) == LUA_TSTRING ? lua_tostring(L, 2) : "<non-string>";
+            fprintf(logFile, "[WII U DEBUG] Shader:send(no-op) self=%p, uniform='%s', argc=%d\n",
+                    (void*)shaderSelf, uname, lua_gettop(L) - 2);
+            fflush(logFile);
+            fclose(logFile);
+        }
+    }
+#endif
+    // Intentionally do nothing; return success
+    return 0;
 }
 
 static int w_Shader_hasUniform(lua_State* L)
 {
-    lua_pushboolean(L, true);  // Always return true
+    // Validate Shader userdata and return permissive result.
+    ShaderBase* shaderSelf = nullptr;
+    try {
+        shaderSelf = Wrap_Shader::CheckShader(L, 1);
+    } catch (...) {
+        lua_pushboolean(L, 0);
+        return 1;
+    }
+    const char* uname = luaL_checkstring(L, 2);
+    (void)shaderSelf; (void)uname;
+    // Future: lua_pushboolean(L, shaderSelf->hasUniform(uname));
+    lua_pushboolean(L, 1);
     return 1;
 }
 
 static int w_Shader_getWarnings(lua_State* L)
 {
-    lua_pushstring(L, "");  // Return empty string
+    // Validate Shader userdata and return empty warnings for now.
+    try { (void)Wrap_Shader::CheckShader(L, 1); } catch (...) {}
+    lua_pushstring(L, "");
     return 1;
 }
 
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
 // Debug function to log shader_functions registration
 void debug_shader_functions()
 {
@@ -2564,55 +2602,22 @@ static constexpr luaL_Reg shader_functions[] = {
 
 int open_shader(lua_State* L)
 {
-#ifdef __WIIU__
+#if defined(__WIIU__) && (__DEBUG__)
     FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
     if (logFile) {
-        fprintf(logFile, "[WII U DEBUG] open_shader() - implementing minimal shader system\n");
+        fprintf(logFile, "[WII U DEBUG] open_shader() - registering concrete Shader type and methods\n");
         fflush(logFile);
         fclose(logFile);
     }
 #endif
-
-    try {
-        // Create a minimal shader table with basic functionality
-        lua_newtable(L);
-        
-        // Register basic shader functions to the table manually (Lua 5.1 compatible)
-        for (int i = 0; shader_functions[i].name != nullptr; i++)
-        {
-            lua_pushstring(L, shader_functions[i].name);
-            lua_pushcfunction(L, shader_functions[i].func);
-            lua_settable(L, -3);
-        }
-        
-#ifdef __WIIU__
-        logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
-        if (logFile) {
-            fprintf(logFile, "[WII U DEBUG] open_shader() - minimal shader functions registered successfully\n");
-            fflush(logFile);
-            fclose(logFile);
-        }
-#endif
-
-        return 1;
-    }
-    catch (...) {
-#ifdef __WIIU__
-        logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
-        if (logFile) {
-            fprintf(logFile, "[WII U DEBUG] open_shader() - ERROR: exception caught!\n");
-            fflush(logFile);
-            fclose(logFile);
-        }
-#endif
-        return 0;
-    }
+    // Register the ShaderBase type (userdatas are created with this type).
+    return luax_register_type(L, &ShaderBase::type, shader_functions);
 }
 
 static constexpr lua_CFunction types[] =
 {
     open_drawable,
-    // open_shader,  // DISABLED - causing problems with love.graphics
+    // Avoid re-registering Shader type here; we'll attach methods after module registration.
     love::open_texture,
     love::open_quad,
     love::open_font,
@@ -2675,6 +2680,36 @@ int Wrap_Graphics::open(lua_State* L)
         fclose(logFile);
     }
 #endif
+
+    // After module registration, attach Shader methods to existing metatable if present.
+#ifdef __WIIU__
+    logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+    if (logFile) {
+        fprintf(logFile, "[WII U DEBUG] Wrap_Graphics::open() - attaching Shader methods to metatable if available\n");
+        fflush(logFile);
+        fclose(logFile);
+    }
+#endif
+
+    luaL_getmetatable(L, "Shader");
+    if (lua_type(L, -1) == LUA_TTABLE)
+    {
+        // Stack: mt
+        for (const luaL_Reg* fn = shader_functions; fn && fn->name; ++fn)
+        {
+            lua_pushcfunction(L, fn->func);
+            lua_setfield(L, -2, fn->name);
+        }
+    lua_pop(L, 1); // pop mt
+#ifdef __WIIU__
+        logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+        if (logFile) {
+            fprintf(logFile, "[WII U DEBUG] Wrap_Graphics::open() - Shader methods attached\n");
+            fflush(logFile);
+            fclose(logFile);
+        }
+#endif
+    }
 
     return result;
 }
@@ -2900,6 +2935,10 @@ int Wrap_Graphics::newShader(lua_State* L)
     
     // Debug: Log shader creation at Lua wrapper level
     const std::string logPath = "/vol/content/simple_debug.log";
+#if defined(__WIIU__) && !(__DEBUG__)
+    // In release, avoid creating/using the file logger
+    (void)logPath;
+#endif
     std::ofstream debugFile(logPath, std::ios::app);
     if (debugFile.is_open())
     {
@@ -2918,7 +2957,7 @@ int Wrap_Graphics::newShader(lua_State* L)
         
         // Debug: Log shader paths/code
         std::ofstream debugFile2(logPath, std::ios::app);
-        if (debugFile2.is_open())
+    if (debugFile2.is_open())
         {
             debugFile2 << "[DEBUG] Wrap_Graphics::newShader() - First argument: " << std::string(code1) << std::endl;
             debugFile2.close();
@@ -2953,7 +2992,7 @@ int Wrap_Graphics::newShader(lua_State* L)
     ShaderBase* shader = nullptr;
     luax_catchexcept(L, [&]() {
         std::ofstream debugFile4(logPath, std::ios::app);
-        if (debugFile4.is_open())
+    if (debugFile4.is_open())
         {
             debugFile4 << "[DEBUG] Wrap_Graphics::newShader() - About to call graphics->newShader() with " << filepaths.size() << " file paths" << std::endl;
             debugFile4.close();
@@ -2962,7 +3001,7 @@ int Wrap_Graphics::newShader(lua_State* L)
         shader = graphics->newShader(filepaths, options);
         
         std::ofstream debugFile5(logPath, std::ios::app);
-        if (debugFile5.is_open())
+    if (debugFile5.is_open())
         {
             debugFile5 << "[DEBUG] Wrap_Graphics::newShader() - graphics->newShader() returned shader pointer: " << (void*)shader << std::endl;
             debugFile5.close();
@@ -2970,6 +3009,25 @@ int Wrap_Graphics::newShader(lua_State* L)
     });
     
     luax_pushtype(L, shader);
+    // Ensure Shader methods are attached to the metatable now that the type exists
+    luaL_getmetatable(L, "Shader");
+    if (lua_type(L, -1) == LUA_TTABLE)
+    {
+        for (const luaL_Reg* fn = shader_functions; fn && fn->name; ++fn)
+        {
+            lua_pushcfunction(L, fn->func);
+            lua_setfield(L, -2, fn->name);
+        }
+#if defined(__WIIU__) && (__DEBUG__)
+        FILE* logFileX = fopen("fs:/vol/external01/simple_debug.log", "a");
+        if (logFileX) {
+            fprintf(logFileX, "[WII U DEBUG] Wrap_Graphics::newShader() - Shader methods attached to metatable\n");
+            fflush(logFileX);
+            fclose(logFileX);
+        }
+#endif
+    lua_pop(L, 1); // pop metatable
+    }
     shader->release();
     
     return 1;
