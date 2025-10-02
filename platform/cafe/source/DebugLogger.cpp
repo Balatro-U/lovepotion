@@ -14,12 +14,13 @@ namespace love
 
         // Try multiple paths for log file
         const char* logPaths[] = {
-            "sd:/balatro_debug.log",
+            "/vol/external01/wiiu/apps/balatro/balatro_debug.log",
+            "/vol/external01/balatro_debug.log",
             "balatro_debug.log"  // fallback to current directory
         };
         
         const char* usedPath = nullptr;
-        for (int i = 0; i < 5; i++)
+        for (int i = 0; i < 3; i++)
         {
             logFile = fopen(logPaths[i], "w");
             if (logFile != nullptr)
@@ -68,13 +69,7 @@ namespace love
         if (logFile == nullptr)
         {
             // Try to write to simple_debug.log as fallback
-            FILE* fallbackFile = fopen("fs:/vol/external01/simple_debug.log", "a");
-            if (fallbackFile == nullptr)
-                fallbackFile = fopen("/vol/external01/simple_debug.log", "a");
-            if (fallbackFile == nullptr)
-                fallbackFile = fopen("/vol/storage_mlc01/simple_debug.log", "a");
-            if (fallbackFile == nullptr)
-                fallbackFile = fopen("simple_debug.log", "a");
+            FILE* fallbackFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
                 
             if (fallbackFile != nullptr)
             {

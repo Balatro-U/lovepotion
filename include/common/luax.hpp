@@ -322,12 +322,28 @@ namespace love
     template<typename... T>
     inline int luax_register_type(lua_State* L, Type* type, T&&... values)
     {
-        luax_register_type_init(L, type);
-        (luax_register_type_inner(L, std::forward<T>(values)), ...);
-
-        lua_pop(L, 1);
-
-        return 0;
+    luax_register_type_init(L, type);
+#ifdef __WIIU__
+    {
+        FILE* f = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log","a");
+        if (f) { fprintf(f, "[LUA_REG][TYPE] init complete name=%s stackTop=%d\n", type->getName(), lua_gettop(L)); fclose(f);}            
+    }
+#endif
+    (luax_register_type_inner(L, std::forward<T>(values)), ...);
+#ifdef __WIIU__
+    {
+        FILE* f = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log","a");
+        if (f) { fprintf(f, "[LUA_REG][TYPE] inner functions registered name=%s stackTop=%d\n", type->getName(), lua_gettop(L)); fclose(f);}            
+    }
+#endif
+    lua_pop(L, 1);
+#ifdef __WIIU__
+    {
+        FILE* f = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log","a");
+        if (f) { fprintf(f, "[LUA_REG][TYPE] pop metatable name=%s stackTop=%d\n", type->getName(), lua_gettop(L)); fclose(f);}            
+    }
+#endif
+    return 0;
     }
 
     void luax_register_types(lua_State* L, std::span<const lua_CFunction> types);

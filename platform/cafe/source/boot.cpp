@@ -93,7 +93,7 @@ namespace love
             
 #ifdef __WIIU__
             // Also log to simple file for Cemu debugging
-            FILE* serviceLog = fopen("fs:/vol/external01/simple_debug.log", "a");
+            FILE* serviceLog = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
             if (serviceLog) {
                 fprintf(serviceLog, "=== INITIALIZING SERVICE: %s ===\n", service.name);
                 fflush(serviceLog);
@@ -106,7 +106,7 @@ namespace love
             {
                 DebugLogger::log("FAILED to initialize service: %s", service.name);
 #ifdef __WIIU__
-                FILE* serviceErrorLog = fopen("fs:/vol/external01/simple_debug.log", "a");
+                FILE* serviceErrorLog = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
                 if (serviceErrorLog) {
                     fprintf(serviceErrorLog, "FAILED TO INITIALIZE SERVICE: %s\n", service.name);
                     fflush(serviceErrorLog);
@@ -119,7 +119,7 @@ namespace love
             serviceCount++;
             
 #ifdef __WIIU__
-            FILE* serviceOkLog = fopen("fs:/vol/external01/simple_debug.log", "a");
+            FILE* serviceOkLog = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
             if (serviceOkLog) {
                 fprintf(serviceOkLog, "SUCCESS: Service %s initialized (%d/%zu)\n", service.name, serviceCount, services.size());
                 fflush(serviceOkLog);
@@ -144,7 +144,7 @@ namespace love
         DebugLogger::log("=== PREINIT COMPLETED SUCCESSFULLY ===");
         
 #ifdef __WIIU__
-        FILE* completedLog = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* completedLog = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (completedLog) {
             fprintf(completedLog, "=== PREINIT COMPLETED SUCCESSFULLY ===\n");
             fflush(completedLog);
@@ -247,14 +247,14 @@ namespace love
     static bool isRunning()
     {
 #ifdef __WIIU__
-        FILE* logFile_start = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile_start = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile_start) {
             fprintf(logFile_start, "isRunning(): Function entered\n");
             fflush(logFile_start);
             fclose(logFile_start);
         }
         
-        FILE* logFile_main = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile_main = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile_main) {
             fprintf(logFile_main, "isRunning(): About to call OSGetMainCoreId()\n");
             fflush(logFile_main);
@@ -265,14 +265,14 @@ namespace love
         uint32_t mainCoreId = OSGetMainCoreId();
         
 #ifdef __WIIU__
-        FILE* logFile_core = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile_core = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile_core) {
             fprintf(logFile_core, "isRunning(): OSGetMainCoreId() returned %u\n", mainCoreId);
             fflush(logFile_core);
             fclose(logFile_core);
         }
         
-        FILE* logFile_check = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile_check = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile_check) {
             fprintf(logFile_check, "isRunning(): About to call Console::isMainCoreId()\n");
             fflush(logFile_check);
@@ -283,7 +283,7 @@ namespace love
         if (!Console::isMainCoreId(mainCoreId))
         {
 #ifdef __WIIU__
-            FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+            FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
             if (logFile) {
                 fprintf(logFile, "isRunning(): Not main core, calling ProcUISubProcessMessages(false)\n");
                 fflush(logFile);
@@ -297,7 +297,7 @@ namespace love
         const auto status = ProcUIProcessMessages(false);
 
 #ifdef __WIIU__
-        FILE* logFile2 = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile2 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile2) {
             fprintf(logFile2, "isRunning(): ProcUIProcessMessages(false) returned status: %d\n", status);
             fflush(logFile2);
@@ -310,7 +310,7 @@ namespace love
             case PROCUI_STATUS_IN_FOREGROUND:
 #ifdef __WIIU__
                 {
-                    FILE* logFile3 = fopen("fs:/vol/external01/simple_debug.log", "a");
+                    FILE* logFile3 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
                     if (logFile3) {
                         fprintf(logFile3, "isRunning(): PROCUI_STATUS_IN_FOREGROUND - sending focus(true)\n");
                         fflush(logFile3);
@@ -323,7 +323,7 @@ namespace love
             case PROCUI_STATUS_RELEASE_FOREGROUND:
 #ifdef __WIIU__
                 {
-                    FILE* logFile4 = fopen("fs:/vol/external01/simple_debug.log", "a");
+                    FILE* logFile4 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
                     if (logFile4) {
                         fprintf(logFile4, "isRunning(): PROCUI_STATUS_RELEASE_FOREGROUND - sending focus(false)\n");
                         fflush(logFile4);
@@ -337,7 +337,7 @@ namespace love
             case PROCUI_STATUS_EXITING:
 #ifdef __WIIU__
                 {
-                    FILE* logFile5 = fopen("fs:/vol/external01/simple_debug.log", "a");
+                    FILE* logFile5 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
                     if (logFile5) {
                         fprintf(logFile5, "isRunning(): PROCUI_STATUS_EXITING - returning false!\n");
                         fflush(logFile5);
@@ -350,7 +350,7 @@ namespace love
             default:
 #ifdef __WIIU__
                 {
-                    FILE* logFile6 = fopen("fs:/vol/external01/simple_debug.log", "a");
+                    FILE* logFile6 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
                     if (logFile6) {
                         fprintf(logFile6, "isRunning(): Unknown ProcUI status: %d (falling through to return true)\n", status);
                         fflush(logFile6);
@@ -362,7 +362,7 @@ namespace love
         }
 
 #ifdef __WIIU__
-        FILE* logFile7 = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile7 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile7) {
             fprintf(logFile7, "isRunning(): returning true\n");
             fflush(logFile7);
@@ -383,7 +383,7 @@ namespace love
             if (lua_isfunction(L, -1)) {
                 DebugLogger::log("User-defined love.run detected: using user main loop");
 #ifdef __WIIU__
-                FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+                FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
                 if (logFile) {
                     fprintf(logFile, "User-defined love.run detected: using user main loop\n");
                     fflush(logFile);
@@ -393,7 +393,7 @@ namespace love
             } else {
                 DebugLogger::log("No user-defined love.run: using default main loop");
 #ifdef __WIIU__
-                FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+                FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
                 if (logFile) {
                     fprintf(logFile, "No user-defined love.run: using default main loop\n");
                     fflush(logFile);
@@ -419,7 +419,7 @@ namespace love
         
 #ifdef __WIIU__
         // Additional simple logging for debugging freeze
-        FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile) {
             fprintf(logFile, "mainLoop() entered, about to check shutdown\n");
             fflush(logFile);
@@ -429,7 +429,7 @@ namespace love
         
         // Check if running first before anything else
 #ifdef __WIIU__
-        FILE* logFile_pre = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile_pre = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile_pre) {
             fprintf(logFile_pre, "About to call isRunning()...\n");
             fflush(logFile_pre);
@@ -440,18 +440,29 @@ namespace love
         bool running = true; // BYPASS isRunning() - force true
         
 #ifdef __WIIU__
-        FILE* logFile0 = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile0 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile0) {
             fprintf(logFile0, "BYPASSED isRunning() - forced to: %s\n", running ? "true" : "false");
             fflush(logFile0);
             fclose(logFile0);
+        }
+        
+        // Add detailed state tracking
+        static int mainLoopCallCount = 0;
+        mainLoopCallCount++;
+        FILE* stateLog = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
+        if (stateLog) {
+            fprintf(stateLog, "mainLoop() call #%d - L=%p, Lua stack top: %d\n", 
+                    mainLoopCallCount, (void*)L, lua_gettop(L));
+            fflush(stateLog);
+            fclose(stateLog);
         }
 #endif
         
         if (!running)
         {
 #ifdef __WIIU__
-            FILE* logFileExit = fopen("fs:/vol/external01/simple_debug.log", "a");
+            FILE* logFileExit = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
             if (logFileExit) {
                 fprintf(logFileExit, "isRunning() is false, returning false from mainLoop()\n");
                 fflush(logFileExit);
@@ -464,7 +475,7 @@ namespace love
         if (!s_Shutdown)
         {
 #ifdef __WIIU__
-            FILE* logFile2 = fopen("fs:/vol/external01/simple_debug.log", "a");
+            FILE* logFile2 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
             if (logFile2) {
                 fprintf(logFile2, "Not shutdown, about to call luax_resume()\n");
                 fflush(logFile2);
@@ -478,7 +489,7 @@ namespace love
             DebugLogger::log("Pre-execution stack analysis: %d items", preStackTop);
             
 #ifdef __WIIU__
-            FILE* preLog = fopen("fs:/vol/external01/simple_debug.log", "a");
+            FILE* preLog = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
             if (preLog) {
                 fprintf(preLog, "=== PRE-EXECUTION STACK ANALYSIS ===\n");
                 fprintf(preLog, "Stack has %d items before luax_resume()\n", preStackTop);
@@ -574,7 +585,7 @@ namespace love
                     DebugLogger::log("CRITICAL ERROR: Attempting to resume %s instead of thread!", lua_typename(L, topType));
                     
 #ifdef __WIIU__
-                    FILE* errorLog = fopen("fs:/vol/external01/simple_debug.log", "a");
+                    FILE* errorLog = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
                     if (errorLog) {
                         fprintf(errorLog, "=== CRITICAL STACK ERROR DETECTED ===\n");
                         fprintf(errorLog, "Attempting to resume %s instead of thread!\n", lua_typename(L, topType));
@@ -607,7 +618,7 @@ namespace love
             
             const auto resumeResult = luax_resume(L, argc, nres);
 #ifdef __WIIU__
-            FILE* logFile3 = fopen("fs:/vol/external01/simple_debug.log", "a");
+            FILE* logFile3 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
             if (logFile3) {
                 fprintf(logFile3, "luax_resume() returned, result=%d\n", resumeResult);
                 fflush(logFile3);
@@ -625,7 +636,7 @@ namespace love
                 DebugLogger::log("luax_resume returned %d (not yielding)", resumeResult);
                 
 #ifdef __WIIU__
-                FILE* criticalLog = fopen("fs:/vol/external01/simple_debug.log", "a");
+                FILE* criticalLog = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
                 if (criticalLog) {
                     fprintf(criticalLog, "=== CRITICAL: LUA THREAD COMPLETED/ERROR ===\n");
                     fprintf(criticalLog, "luax_resume returned %d (not yielding)\n", resumeResult);
@@ -657,7 +668,7 @@ namespace love
                 DebugLogger::log("Lua has stopped running. Displaying diagnostic screen.");
                 
 #ifdef __WIIU__
-                FILE* fallbackLog = fopen("fs:/vol/external01/simple_debug.log", "a");
+                FILE* fallbackLog = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
                 if (fallbackLog) {
                     fprintf(fallbackLog, "=== ENTERING C++ FALLBACK LOOP ===\n");
                     fprintf(fallbackLog, "Displaying black screen with diagnostic text\n");
@@ -756,7 +767,7 @@ namespace love
                     
                     // Log every 60 frames
                     if (fallbackFrameCount % 60 == 0) {
-                        FILE* fallbackFrameLog = fopen("fs:/vol/external01/simple_debug.log", "a");
+                        FILE* fallbackFrameLog = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
                         if (fallbackFrameLog) {
                             fprintf(fallbackFrameLog, "Fallback loop frame %d\n", fallbackFrameCount);
                             fflush(fallbackFrameLog);
@@ -770,7 +781,7 @@ namespace love
                 
                 DebugLogger::log("=== EXITING C++ FALLBACK LOOP ===");
                 
-                FILE* exitLog = fopen("fs:/vol/external01/simple_debug.log", "a");
+                FILE* exitLog = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
                 if (exitLog) {
                     fprintf(exitLog, "=== EXITING C++ FALLBACK LOOP ===\n");
                     fprintf(exitLog, "Fallback loop ran for %d frames\n", fallbackFrameCount);
@@ -956,7 +967,7 @@ namespace love
                     fflush(stdout);
                     
                     // Also write to a simple text file for easy reading
-                    FILE* errorFile = fopen("lua_error.txt", "w");
+                    FILE* errorFile = fopen("/vol/external01/wiiu/apps/balatro/lua_error.txt", "w");
                     if (errorFile) {
                         fprintf(errorFile, "=== LUA ERROR REPORT ===\n");
                         fprintf(errorFile, "Error Type: %s (code: %d)\n", errorTypeStr, resumeResult);
@@ -1009,7 +1020,7 @@ namespace love
                     
 #ifdef __WIIU__
                     // Log to simple debug file with enhanced information
-                    FILE* crashLog = fopen("fs:/vol/external01/simple_debug.log", "a");
+                    FILE* crashLog = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
                     if (crashLog) {
                         fprintf(crashLog, "=== ENHANCED LUA CRASH REPORT ===\n");
                         fprintf(crashLog, "Error Type: %s (code: %d)\n", errorTypeStr, resumeResult);

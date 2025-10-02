@@ -42,7 +42,7 @@ namespace love
         static int attachDefaultCount = 0;
         attachDefaultCount++;
         
-        FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile) {
             const char* typeName = "unknown";
             switch(type) {
@@ -61,7 +61,7 @@ namespace love
         if (defaultShader == nullptr)
         {
 #ifdef __WIIU__
-            FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+            FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
             if (logFile) {
                 fprintf(logFile, "  WARNING: standardShaders[%d] is NULL, shaders not ready yet\n", type);
                 fflush(logFile);
@@ -76,7 +76,7 @@ namespace love
         if (current != defaultShader)
         {
 #ifdef __WIIU__
-            FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+            FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
             if (logFile) {
                 fprintf(logFile, "  Calling attach() on shader %p\n", defaultShader);
                 fflush(logFile);
@@ -87,7 +87,7 @@ namespace love
         }
 #ifdef __WIIU__
         else {
-            FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+            FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
             if (logFile) {
                 fprintf(logFile, "  Shader already current, no switch needed\n");
                 fflush(logFile);

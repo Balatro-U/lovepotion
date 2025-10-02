@@ -405,13 +405,8 @@ int love_print(lua_State* L)
     
 #ifdef __WIIU__
     // Also log to file for debugging
-    FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
-    if (logFile == nullptr) {
-        logFile = fopen("/vol/external01/simple_debug.log", "a");
-    }
-    if (logFile == nullptr) {
-        logFile = fopen("simple_debug.log", "a");
-    }
+    FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
+
     
     if (logFile != nullptr) {
         fprintf(logFile, "[LOVE] %s\n", result.c_str());

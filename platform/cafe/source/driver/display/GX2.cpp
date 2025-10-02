@@ -198,9 +198,9 @@ namespace love
     void GX2::ensureInFrame()
     {
 #ifdef __WIIU__
-        FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile) {
-            fprintf(logFile, "GX2::ensureInFrame() called, inFrame = %s\n", this->inFrame ? "true" : "false");
+            fprintf(logFile, "GX2::ensureInFrame() called, inFrame=%s prevIssued=%u frameIdx? (will set below)\n", this->inFrame ? "true" : "false", this->issuedDrawsThisFrame);
             fflush(logFile);
             fclose(logFile);
         }
@@ -211,9 +211,11 @@ namespace love
         if (!this->inFrame)
         {
 #ifdef __WIIU__
-            FILE* logFile2 = fopen("fs:/vol/external01/simple_debug.log", "a");
+            static uint64_t frameCounter = 0;
+            frameCounter++;
+            FILE* logFile2 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
             if (logFile2) {
-                fprintf(logFile2, "GX2::ensureInFrame() - starting new frame\n");
+                fprintf(logFile2, "GX2::ensureInFrame() - starting new frame #%llu (reset consecutivePresentCalls, prevIssued=%u)\n", (unsigned long long)frameCounter, this->issuedDrawsThisFrame);
                 fflush(logFile2);
                 fclose(logFile2);
             }
@@ -226,10 +228,14 @@ namespace love
             #endif
 #endif
             this->inFrame = true;
+            // Reset per-frame issued draw counter (added for conditional debug fill)
+            this->issuedDrawsThisFrame = 0;
+            // Stash current frame index in a static for present() logging
+            this->dirtyProjection = this->dirtyProjection; // no-op to silence potential unused warnings
         }
         
 #ifdef __WIIU__
-        FILE* logFile3 = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile3 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile3) {
             fprintf(logFile3, "GX2::ensureInFrame() completed, inFrame = true\n");
             fflush(logFile3);
@@ -252,7 +258,7 @@ namespace love
     void GX2::clear(const Color& color)
     {
 #ifdef __WIIU__
-        FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile) {
             fprintf(logFile, "GX2::clear() called with color: R=%.2f G=%.2f B=%.2f A=%.2f, inFrame = %s\n", 
                    color.r, color.g, color.b, color.a, this->inFrame ? "true" : "false");
@@ -264,7 +270,7 @@ namespace love
         if (!this->inFrame)
         {
 #ifdef __WIIU__
-            FILE* logFile2 = fopen("fs:/vol/external01/simple_debug.log", "a");
+            FILE* logFile2 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
             if (logFile2) {
                 fprintf(logFile2, "GX2::clear() - not in frame, calling ensureInFrame\n");
                 fflush(logFile2);
@@ -275,7 +281,7 @@ namespace love
         }
 
 #ifdef __WIIU__
-        FILE* logFile3 = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile3 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile3) {
             fprintf(logFile3, "GX2::clear() - clearing framebuffer\n");
             fflush(logFile3);
@@ -287,7 +293,7 @@ namespace love
         GX2SetContextState(this->state);
         
 #ifdef __WIIU__
-        FILE* logFile4 = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile4 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile4) {
             fprintf(logFile4, "GX2::clear() completed\n");
             fflush(logFile4);
@@ -321,11 +327,30 @@ namespace love
 
     void GX2::setMode(int width, int height)
     {
+#ifdef __WIIU__
+        FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
+        if (logFile) {
+            fprintf(logFile, "GX2::setMode() called with width=%d height=%d\n", width, height);
+            fflush(logFile);
+            fclose(logFile);
+        }
+#endif
+
         this->setViewport({ 0, 0, width, height });
         this->setScissor({ 0, 0, width, height });
 
         auto* newUniform = this->targets[love::currentScreen].getUniform();
         std::memcpy(this->uniform, newUniform, sizeof(Uniform));
+
+#ifdef __WIIU__
+        FILE* logFile2 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
+        if (logFile2) {
+            fprintf(logFile2, "GX2::setMode() completed, context.viewport=(%d,%d %dx%d)\n", 
+                    this->context.viewport.x, this->context.viewport.y, this->context.viewport.w, this->context.viewport.h);
+            fflush(logFile2);
+            fclose(logFile2);
+        }
+#endif
     }
 
     void GX2::setSamplerState(TextureBase* texture, const SamplerState& state)
@@ -367,9 +392,10 @@ namespace love
     void GX2::prepareDraw(GraphicsBase* graphics)
     {
 #ifdef __WIIU__
-        FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile) {
-            fprintf(logFile, "GX2::prepareDraw() called\n");
+            // Snapshot current context state minimal (will expand if needed)
+            fprintf(logFile, "GX2::prepareDraw() called issuedDraws=%u inFrame=%d\n", this->issuedDrawsThisFrame, this->inFrame?1:0);
             fflush(logFile);
             fclose(logFile);
         }
@@ -378,16 +404,70 @@ namespace love
         // Ensure we're in frame before any drawing operations
         this->ensureInFrame();
         
+        // --- Uniform self-heal: sometimes modelView/projection are zero/garbage (observed in logs) ---
+        if (this->uniform) {
+            const float* mv = (const float*)&this->uniform->modelView;
+            const float* pr = (const float*)&this->uniform->projection;
+            bool mvAllZero = true;
+            for (int i=0;i<16;i++) if (mv[i] != 0.0f) { mvAllZero = false; break; }
+            bool prAllZero = true;
+            for (int i=0;i<16;i++) if (pr[i] != 0.0f) { prAllZero = false; break; }
+            bool prHuge = false;
+            for (int i=0;i<16;i++) { float a = pr[i]; if (a > 1e9f || a < -1e9f) { prHuge = true; break; } }
+            if (mvAllZero || prAllZero || prHuge) {
+                // Rebuild sane matrices
+                int w = this->context.viewport.w ? this->context.viewport.w : 1280;
+                int h = this->context.viewport.h ? this->context.viewport.h : 720;
+                // Identity modelView
+                this->uniform->modelView = glm::mat4(1.0f);
+                // Ortho 0..w x 0..h (Y down) similar to glm::ortho(left,right,bottom,top,zNear,zFar)
+                // We want top=0, bottom=h so pass bottom=h, top=0
+                this->uniform->projection = glm::ortho(0.0f, (float)w, (float)h, 0.0f, -10.0f, 10.0f);
+#ifdef __WIIU__
+                FILE* healLog = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
+                if (healLog) {
+                    fprintf(healLog, "GX2::prepareDraw() UNIFORM REPAIR triggered (mvAllZero=%d prAllZero=%d prHuge=%d) viewport=%dx%d\n", (int)mvAllZero, (int)prAllZero, (int)prHuge, w, h);
+                    fclose(healLog);
+                }
+#endif
+            }
+        }
+
         if (Shader::current != nullptr)
         {
             auto* shader = (Shader*)ShaderBase::current;
             shader->updateBuiltinUniforms(graphics, this->uniform);
+#ifdef __WIIU__
+        // Log a snapshot of the modelView and projection matrices to confirm values look sane
+        FILE* matLog = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
+        if (matLog) {
+        const float* mv = (const float*)&this->uniform->modelView;
+        const float* pr = (const float*)&this->uniform->projection;
+        // Row-major print (glm default column-major, but we just show raw floats sequentially)
+        fprintf(matLog, "GX2::prepareDraw() uniform modelView[0..7]=[% .3f % .3f % .3f % .3f | % .3f % .3f % .3f % .3f]\n",
+            mv[0], mv[1], mv[2], mv[3], mv[4], mv[5], mv[6], mv[7]);
+        fprintf(matLog, "GX2::prepareDraw() uniform projection[0..7]=[% .3f % .3f % .3f % .3f | % .3f % .3f % .3f % .3f]\n",
+            pr[0], pr[1], pr[2], pr[3], pr[4], pr[5], pr[6], pr[7]);
+        // Attempt to transform a captured CPU-space vertex (if provided by higher-level logging)
+        extern float g_lastPolyX; extern float g_lastPolyY; extern bool g_haveLastPoly;
+        if (g_haveLastPoly) {
+            glm::vec4 clip = this->uniform->projection * this->uniform->modelView * glm::vec4(g_lastPolyX, g_lastPolyY, 0.0f, 1.0f);
+            float ndcX = (clip.w != 0.0f) ? clip.x / clip.w : 0.0f;
+            float ndcY = (clip.w != 0.0f) ? clip.y / clip.w : 0.0f;
+            fprintf(matLog, "GX2::prepareDraw() sampleTransform src=(%.2f,%.2f) clip=(%.3f,%.3f,%.3f,%.3f) ndc=(%.3f,%.3f)\n", g_lastPolyX, g_lastPolyY, clip.x, clip.y, clip.z, clip.w, ndcX, ndcY);
+        } else {
+            fprintf(matLog, "GX2::prepareDraw() sampleTransform not available (no polygon captured)\n");
+        }
+        fflush(matLog);
+        fclose(matLog);
+        }
+#endif
         }
         
 #ifdef __WIIU__
-        FILE* logFile2 = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile2 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile2) {
-            fprintf(logFile2, "GX2::prepareDraw() completed\n");
+            fprintf(logFile2, "GX2::prepareDraw() completed (shader=%p boundFramebuffer=%p)\n", (void*)ShaderBase::current, (void*)this->context.boundFramebuffer);
             fflush(logFile2);
             fclose(logFile2);
         }
@@ -415,8 +495,13 @@ namespace love
     void GX2::bindTextureToUnit(GX2Texture* texture, GX2Sampler* sampler, int unit)
     {
         auto* shader = (Shader*)ShaderBase::current;
-        auto* info   = shader->getUniformInfo("texture0");
-
+        const ShaderBase::UniformInfo* info = nullptr;
+        // Try common sampler names across examples
+        static const char* names[] = { "texture0", "uTexture", "uTex", "mainTex", "tex0" };
+        for (const char* n : names) {
+            info = shader->getUniformInfo(n);
+            if (info) break;
+        }
         if (!info)
             return;
 
@@ -429,12 +514,13 @@ namespace love
 #ifdef __WIIU__
         // CRITICAL: Detect endless loop and trigger fallback
         static bool fallbackTriggered = false;
+        static uint32_t debugFrameCounter = 0; // used for alternating test pattern
         
         this->consecutivePresentCalls++;
         
-        FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile) {
-            fprintf(logFile, "GX2::present() called #%d, inFrame = %s\n", this->consecutivePresentCalls, this->inFrame ? "true" : "false");
+            fprintf(logFile, "GX2::present() callCount=%d inFrame=%s issuedDrawsThisFrame=%u applyingFallbackTestColor=%s\n", this->consecutivePresentCalls, this->inFrame ? "true" : "false", this->issuedDrawsThisFrame, (this->issuedDrawsThisFrame==0?"yes":"no"));
             fflush(logFile);
             fclose(logFile);
         }
@@ -444,7 +530,7 @@ namespace love
         // if (this->consecutivePresentCalls > 30 && !fallbackTriggered) {
         //     fallbackTriggered = true;
         //     
-        //     FILE* fallbackLog = fopen("fs:/vol/external01/simple_debug.log", "a");
+        //     FILE* fallbackLog = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         //     if (fallbackLog) {
         //         fprintf(fallbackLog, "=== ENDLESS LOOP DETECTED: TRIGGERING FALLBACK DIAGNOSTIC SCREEN ===\n");
         //         fprintf(fallbackLog, "Consecutive present calls: %d\n", this->consecutivePresentCalls);
@@ -462,7 +548,7 @@ namespace love
         if (!this->inFrame)
         {
 #ifdef __WIIU__
-            FILE* logFile2 = fopen("fs:/vol/external01/simple_debug.log", "a");
+            FILE* logFile2 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
             if (logFile2) {
                 fprintf(logFile2, "GX2::present() - not in frame, calling ensureInFrame\n");
                 fflush(logFile2);
@@ -473,18 +559,60 @@ namespace love
         }
         
 #ifdef __WIIU__
-        FILE* logFile3 = fopen("fs:/vol/external01/simple_debug.log", "a");
+    // Acquire framebuffer pointer before logging so we can safely print it
+    GX2ColorBuffer* fb = this->getFramebuffer();
+        FILE* logFile3 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile3) {
-            fprintf(logFile3, "GX2::present() - presenting to both screens\n");
+        // Corrected format string: viewport=(x,y wxh) and ensure all placeholders match arguments
+        fprintf(logFile3, "GX2::present(): presenting issuedDraws=%u (will %s fallback clear) fb=%p viewport=(%d,%d %dx%d) scissor=(%d,%d %dx%d)\n", 
+            this->issuedDrawsThisFrame, this->issuedDrawsThisFrame==0?"apply":"skip", (void*)fb,
+            this->context.viewport.x, this->context.viewport.y, this->context.viewport.w, this->context.viewport.h,
+            this->context.scissor.x, this->context.scissor.y, this->context.scissor.w, this->context.scissor.h);
             fflush(logFile3);
             fclose(logFile3);
         }
 #endif
         
+        // Conditionally apply debug fill ONLY if no draws occurred this frame.
+        // This lets us still see real content once drawing works.
+    // fb already acquired above (WiiU build). For non-WiiU builds acquire now.
+#ifndef __WIIU__
+    GX2ColorBuffer* fb = this->getFramebuffer();
+#endif
+    if (fb && this->issuedDrawsThisFrame == 0) {
+            float r = (debugFrameCounter & 1) ? 1.0f : 0.05f;
+            float g = (debugFrameCounter & 1) ? 0.05f : 1.0f;
+            float b = 0.4f;
+            GX2ClearColor(fb, r, g, b, 1.0f);
+#ifdef __WIIU__
+        FILE* lf = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
+        if (lf) { fprintf(lf, "GX2::present(): applied fallback debug clear color frameCounter=%u\n", debugFrameCounter); fclose(lf);} 
+#endif
+        }
+
+#ifdef __WIIU__
+        // Extra diagnostic: if a control file exists, force an alternating bright clear even when draws occurred.
+        // Create an empty file at fs:/vol/external01/force_overlay_debug to enable.
+        {
+            FILE* ctl = fopen("fs:/vol/external01/force_overlay_debug", "r");
+            if (ctl) {
+                fclose(ctl);
+                if (fb) {
+                    float r = (debugFrameCounter & 1) ? 0.9f : 0.1f;
+                    float g = (debugFrameCounter & 1) ? 0.1f : 0.9f;
+                    float b = 0.1f;
+                    GX2ClearColor(fb, r, g, b, 1.0f);
+                    FILE* overLog = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
+                    if (overLog) { fprintf(overLog, "GX2::present(): force_overlay_debug applied AFTER draws (issued=%u)\n", this->issuedDrawsThisFrame); fclose(overLog);} 
+                }
+            }
+        }
+#endif
+        
         // Present to GamePad
         GX2CopyColorBufferToScanBuffer(&this->targets[0].get(), GX2_SCAN_TARGET_DRC);
-        
-        // Present to TV as well (copy GamePad content to TV)
+
+        // Present to TV (copy same buffer)
         GX2CopyColorBufferToScanBuffer(&this->targets[0].get(), GX2_SCAN_TARGET_TV);
         
         // Swap buffers for both screens
@@ -492,12 +620,13 @@ namespace love
         GX2Flush();
         GX2WaitForVsync();
         
-        this->inFrame = false;
+    this->inFrame = false;
+    debugFrameCounter++;
         
 #ifdef __WIIU__
-        FILE* logFile4 = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile4 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile4) {
-            fprintf(logFile4, "GX2::present() completed, inFrame = false\n");
+            fprintf(logFile4, "GX2::present() completed issuedDraws=%u nextFrameInFrame=false\n", this->issuedDrawsThisFrame);
             fflush(logFile4);
             fclose(logFile4);
         }
@@ -506,9 +635,28 @@ namespace love
 
     void GX2::setViewport(const Rect& rect)
     {
+#ifdef __WIIU__
+        FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
+        if (logFile) {
+            fprintf(logFile, "GX2::setViewport() called with rect=(%d,%d %dx%d)\n", rect.x, rect.y, rect.w, rect.h);
+            fflush(logFile);
+            fclose(logFile);
+        }
+#endif
+
         Rect view = rect;
-        if (rect == Rect::EMPTY)
+        // Fix: Check for empty viewport properly (Rect::EMPTY is an array, not comparable directly)
+        if (rect.x == -1 && rect.y == -1 && rect.w == -1 && rect.h == -1)
             view = this->targets[love::currentScreen].getViewport();
+
+#ifdef __WIIU__
+        FILE* logFile2 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
+        if (logFile2) {
+            fprintf(logFile2, "GX2::setViewport() final view=(%d,%d %dx%d) calling GX2SetViewport\n", view.x, view.y, view.w, view.h);
+            fflush(logFile2);
+            fclose(logFile2);
+        }
+#endif
 
         GX2SetViewport(view.x, view.y, view.w, view.h, Framebuffer::Z_NEAR, Framebuffer::Z_FAR);
         this->context.viewport = view;
@@ -517,7 +665,8 @@ namespace love
     void GX2::setScissor(const Rect& rect)
     {
         Rect scissor = rect;
-        if (rect == Rect::EMPTY)
+        // Fix: Check for empty scissor properly (Rect::EMPTY is an array, not comparable directly)
+        if (rect.x == -1 && rect.y == -1 && rect.w == -1 && rect.h == -1)
             scissor = this->targets[love::currentScreen].getScissor();
 
         GX2SetScissor(scissor.x, scissor.y, scissor.w, scissor.h);
@@ -594,7 +743,7 @@ namespace love
         // Force immediate display of diagnostic message using OSScreen
         // This bypasses the normal graphics pipeline which may be stuck
         
-        FILE* diagnosticLog = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* diagnosticLog = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (diagnosticLog) {
             fprintf(diagnosticLog, "=== SHOWING FALLBACK DIAGNOSTIC SCREEN ===\n");
             fprintf(diagnosticLog, "Attempting to display diagnostic message using OSScreen\n");
@@ -635,7 +784,7 @@ namespace love
             const char* line6 = "- Infinite loop in love.run() or love.update()";
             const char* line7 = "- Recursive function calls (stack overflow)";
             const char* line8 = "- Blocking operation in main loop";
-            const char* line9 = "Check: fs:/vol/external01/simple_debug.log";
+            const char* line9 = "Check: /vol/external01/wiiu/apps/balatro/simple_debug.log";
             const char* line10 = "Press HOME to exit to Wii U menu";
             
             // Get current system time for display
@@ -676,7 +825,7 @@ namespace love
             OSScreenFlipBuffersEx(SCREEN_TV);
             OSScreenFlipBuffersEx(SCREEN_DRC);
             
-            FILE* successLog = fopen("fs:/vol/external01/simple_debug.log", "a");
+            FILE* successLog = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
             if (successLog) {
                 fprintf(successLog, "Fallback diagnostic screen displayed successfully\n");
                 fflush(successLog);
@@ -694,7 +843,7 @@ namespace love
                 OSScreenFlipBuffersEx(SCREEN_DRC);
             }
         } else {
-            FILE* errorLog = fopen("fs:/vol/external01/simple_debug.log", "a");
+            FILE* errorLog = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
             if (errorLog) {
                 fprintf(errorLog, "FAILED to allocate OSScreen buffers for diagnostic display\n");
                 fflush(errorLog);
@@ -708,3 +857,8 @@ namespace love
 
 // Global instance definition
 love::GX2 love::gx2;
+
+// Helper for instrumentation without including GX2.hpp in large compilation units
+extern "C" void love_gx2IncrementIssuedDraws() {
+    love::gx2.incrementIssuedDraws();
+}

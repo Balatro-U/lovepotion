@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef USE_CAFEGLSL
+// CafeGLSL is always enabled
 
 #include <memory>
 #include <string>
@@ -83,6 +83,13 @@ namespace love
         static std::string GetDefaultPixelShaderSource();
 
         /**
+         * @brief Convert LÖVE2D shader source to standard GLSL
+         * @param loveShaderSource LÖVE2D fragment shader source code
+         * @return GLSL source code compatible with CafeGLSL
+         */
+        static std::string ConvertLoveShaderToGLSL(const std::string& loveShaderSource);
+
+        /**
          * @brief Free a compiled vertex shader
          * @param shader Pointer to shader to free
          */
@@ -145,5 +152,3 @@ namespace love
     using GX2VertexShaderWrapper = GX2ShaderWrapper<GX2VertexShader>;
     using GX2PixelShaderWrapper = GX2ShaderWrapper<GX2PixelShader>;
 }
-
-#endif // USE_CAFEGLSL

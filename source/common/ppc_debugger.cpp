@@ -13,7 +13,7 @@ namespace ppc {
 char PPCDebugger::debug_buffer[4096];
 
 void PPCDebugger::writeToFile(const char* message) {
-    FILE* f = fopen("/vol/external01/simple_debug.log", "a");
+    FILE* f = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
     if (f) {
         fprintf(f, "[PPC_DEBUG] %s\n", message);
         fclose(f);

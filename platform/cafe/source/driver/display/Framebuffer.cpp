@@ -146,7 +146,8 @@ namespace love
 
     void Framebuffer::setScissor(const Rect& scissor)
     {
-        if (scissor == Rect::EMPTY)
+        // Fix: Check for empty scissor properly (Rect::EMPTY is an array, not comparable directly)
+        if (scissor.x == -1 && scissor.y == -1 && scissor.w == -1 && scissor.h == -1)
             this->scissor = { 0, 0, this->width, this->height };
         else
             this->scissor = scissor;
@@ -156,10 +157,31 @@ namespace love
 
     void Framebuffer::setViewport(const Rect& viewport)
     {
-        if (viewport == Rect::EMPTY)
+#ifdef __WIIU__
+        FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
+        if (logFile) {
+            fprintf(logFile, "Framebuffer::setViewport() called with viewport=(%d,%d %dx%d) width=%d height=%d\n", 
+                    viewport.x, viewport.y, viewport.w, viewport.h, this->width, this->height);
+            fflush(logFile);
+            fclose(logFile);
+        }
+#endif
+
+        // Fix: Check for empty viewport properly (Rect::EMPTY is an array, not comparable directly)
+        if (viewport.x == -1 && viewport.y == -1 && viewport.w == -1 && viewport.h == -1)
             this->viewport = { 0, 0, this->width, this->height };
         else
             this->viewport = viewport;
+
+#ifdef __WIIU__
+        FILE* logFile2 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
+        if (logFile2) {
+            fprintf(logFile2, "Framebuffer::setViewport() final viewport=(%d,%d %dx%d) calling GX2SetViewport\n", 
+                    this->viewport.x, this->viewport.y, this->viewport.w, this->viewport.h);
+            fflush(logFile2);
+            fclose(logFile2);
+        }
+#endif
 
         GX2SetViewport(this->viewport.x, this->viewport.y, this->viewport.w, this->viewport.h, Z_NEAR, Z_FAR);
     }

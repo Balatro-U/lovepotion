@@ -13,7 +13,7 @@ using namespace love;
 int Wrap_Sound::newDecoder(lua_State* L)
 {
 #ifdef __WIIU__
-    FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+    FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
     if (logFile) {
         fprintf(logFile, "Wrap_Sound::newDecoder() called with %d arguments\n", lua_gettop(L));
         for (int i = 1; i <= lua_gettop(L); i++) {
@@ -33,7 +33,7 @@ int Wrap_Sound::newDecoder(lua_State* L)
     Stream* stream = nullptr;
 
 #ifdef __WIIU__
-    FILE* logFile_check = fopen("fs:/vol/external01/simple_debug.log", "a");
+    FILE* logFile_check = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
     if (logFile_check) {
         fprintf(logFile_check, "newDecoder() - bufferSize: %d, checking if can get file\n", bufferSize);
         fflush(logFile_check);
@@ -44,7 +44,7 @@ int Wrap_Sound::newDecoder(lua_State* L)
     if (luax_cangetfile(L, 1))
     {
 #ifdef __WIIU__
-        FILE* logFile_file = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile_file = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile_file) {
             fprintf(logFile_file, "newDecoder() - can get file, processing file input\n");
             fflush(logFile_file);
@@ -60,7 +60,7 @@ int Wrap_Sound::newDecoder(lua_State* L)
         if (source == Decoder::STREAM_FILE)
         {
 #ifdef __WIIU__
-            FILE* logFile_file2 = fopen("fs:/vol/external01/simple_debug.log", "a");
+            FILE* logFile_file2 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
             if (logFile_file2) {
                 fprintf(logFile_file2, "newDecoder() - about to get file and open for reading\n");
                 fflush(logFile_file2);
@@ -71,7 +71,7 @@ int Wrap_Sound::newDecoder(lua_State* L)
             luax_catchexcept(L, [&]() { file->open(File::MODE_READ); });
             stream = file;
 #ifdef __WIIU__
-            FILE* logFile_file3 = fopen("fs:/vol/external01/simple_debug.log", "a");
+            FILE* logFile_file3 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
             if (logFile_file3) {
                 fprintf(logFile_file3, "newDecoder() - file opened successfully, stream: %p\n", stream);
                 fflush(logFile_file3);
@@ -82,7 +82,7 @@ int Wrap_Sound::newDecoder(lua_State* L)
         else
         {
 #ifdef __WIIU__
-            FILE* logFile_data = fopen("fs:/vol/external01/simple_debug.log", "a");
+            FILE* logFile_data = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
             if (logFile_data) {
                 fprintf(logFile_data, "newDecoder() - creating DataStream from file data\n");
                 fflush(logFile_data);
@@ -98,7 +98,7 @@ int Wrap_Sound::newDecoder(lua_State* L)
     else if (luax_istype(L, 1, Data::type))
     {
 #ifdef __WIIU__
-        FILE* logFile_dtype = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile_dtype = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile_dtype) {
             fprintf(logFile_dtype, "newDecoder() - processing Data type input\n");
             fflush(logFile_dtype);
@@ -111,7 +111,7 @@ int Wrap_Sound::newDecoder(lua_State* L)
     else
     {
 #ifdef __WIIU__
-        FILE* logFile_stream = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile_stream = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile_stream) {
             fprintf(logFile_stream, "newDecoder() - processing Stream type input\n");
             fflush(logFile_stream);
@@ -125,7 +125,7 @@ int Wrap_Sound::newDecoder(lua_State* L)
     Decoder* decoder = nullptr;
 
 #ifdef __WIIU__
-    FILE* logFile_create = fopen("fs:/vol/external01/simple_debug.log", "a");
+    FILE* logFile_create = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
     if (logFile_create) {
         fprintf(logFile_create, "newDecoder() - about to create decoder with stream: %p, bufferSize: %d\n", stream, bufferSize);
         fflush(logFile_create);
@@ -141,7 +141,7 @@ int Wrap_Sound::newDecoder(lua_State* L)
     // clang-format on
 
 #ifdef __WIIU__
-    FILE* logFile_result = fopen("fs:/vol/external01/simple_debug.log", "a");
+    FILE* logFile_result = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
     if (logFile_result) {
         fprintf(logFile_result, "newDecoder() - decoder created: %p\n", decoder);
         fflush(logFile_result);
@@ -153,7 +153,7 @@ int Wrap_Sound::newDecoder(lua_State* L)
     decoder->release();
 
 #ifdef __WIIU__
-    FILE* logFile_end = fopen("fs:/vol/external01/simple_debug.log", "a");
+    FILE* logFile_end = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
     if (logFile_end) {
         fprintf(logFile_end, "newDecoder() - completed successfully\n");
         fflush(logFile_end);

@@ -6,6 +6,9 @@ dkp_target_generate_symbol_list(${PROJECT_NAME})
 
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
 
+# Project includes (public headers)
+target_include_directories(${PROJECT_NAME} PRIVATE ${PROJECT_SOURCE_DIR}/include)
+
 find_package(Git QUIET)
 if(GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
     execute_process(COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
@@ -29,14 +32,16 @@ set(APP_AUTHOR "xtomasnemec")
 
 file(COPY libraries/luasocket DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
-# CafeGLSL - Wii U shader compiler support
-option(USE_CAFEGLSL "Enable CafeGLSL shader compilation support" ON)
+# CafeGLSL - shader compilation support
+option(USE_CAFEGLSL "Enable CafeGLSL shader compilation" ON)
 if(USE_CAFEGLSL)
     target_compile_definitions(${PROJECT_NAME} PRIVATE USE_CAFEGLSL=1)
     target_sources(${PROJECT_NAME} PRIVATE source/common/CafeGLSL.cpp)
-    message(STATUS "CafeGLSL shader support: ENABLED")
+    
+    # CafeGLSL uses dynamic RPL loading at runtime - no static library linking needed
+    message(STATUS "CafeGLSL shader support: ENABLED (dynamic RPL loading - glslcompiler.rpl)")
 else()
-    message(STATUS "CafeGLSL shader support: DISABLED")
+    message(STATUS "CafeGLSL shader support: DISABLED - using Love2D to GX2 conversion")
 endif()
 
 # PPC Debugger - Advanced PowerPC debugging support
@@ -74,7 +79,11 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 if (NINTENDO_WIIU)
     add_subdirectory(platform/cafe)
 
+    # Ensure platform (Wii U) headers are found before generic headers
+    target_include_directories(${PROJECT_NAME} BEFORE PRIVATE ${PROJECT_SOURCE_DIR}/platform/cafe/include)
+
     target_compile_definitions(${PROJECT_NAME} PRIVATE
+    NINTENDO_WIIU=1
         __CONSOLE__="wiiu" __OS__="cafe" LOVE_BIG_ENDIAN
         __RENDERER_NAME__="GX2" __RENDERER_VERSION__="1.0.0"
         __RENDERER_VENDOR__="AMD" __RENDERER_DEVICE__="GPU7"

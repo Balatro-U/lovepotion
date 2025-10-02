@@ -15,6 +15,9 @@ namespace love
       public:
         Shader(StrongRef<ShaderStageBase> stages[SHADERSTAGE_MAX_ENUM], const CompileOptions& options);
 
+  // Alternate constructor for runtime-compiled shaders (CafeGLSL)
+  Shader(const WHBGfxShaderGroup& compiledGroup, const CompileOptions& options);
+
         virtual ~Shader();
 
         static const char* getDefaultStagePath(StandardShader shader, ShaderStageType stage);
@@ -39,6 +42,7 @@ namespace love
         static constexpr auto INVALIDATE_UNIFORM_BLOCK =
             GX2_INVALIDATE_MODE_CPU | GX2_INVALIDATE_MODE_UNIFORM_BLOCK;
 
-        WHBGfxShaderGroup program;
+  WHBGfxShaderGroup program{};
+  bool runtimeCompiled = false;
     };
 } // namespace love

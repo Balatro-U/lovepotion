@@ -1,5 +1,4 @@
 #include "driver/EventQueue.hpp"
-
 #include "modules/joystick/JoystickModule.hpp"
 
 namespace love
@@ -9,7 +8,7 @@ namespace love
         int joystickCount = joystick::getJoystickCount();
         
         // Use a simple file write for debug since printf might not show up
-        FILE* debugFile = fopen("joystick_debug.txt", "w");
+        FILE* debugFile = fopen("/vol/external01/wiiu/apps/balatro/joystick_debug.txt", "w");
         if (debugFile) {
             fprintf(debugFile, "JoystickModule: Detected %d joystick(s)\n", joystickCount);
             fclose(debugFile);
@@ -17,7 +16,7 @@ namespace love
         
         for (size_t index = 0; index < (size_t)joystickCount; index++)
         {
-            debugFile = fopen("joystick_debug.txt", "a");
+            debugFile = fopen("/vol/external01/wiiu/apps/balatro/joystick_debug.txt", "a");
             if (debugFile) {
                 fprintf(debugFile, "JoystickModule: Adding joystick %zu\n", index);
                 fclose(debugFile);
@@ -26,7 +25,7 @@ namespace love
             this->addJoystick(index);
             EventQueue::getInstance().sendJoystickStatus(true, index);
             
-            debugFile = fopen("joystick_debug.txt", "a");
+            debugFile = fopen("/vol/external01/wiiu/apps/balatro/joystick_debug.txt", "a");
             if (debugFile) {
                 fprintf(debugFile, "JoystickModule: Successfully added joystick %zu\n", index);
                 fclose(debugFile);

@@ -122,7 +122,7 @@ namespace love
         addGlyphCount++;
         
         if (addGlyphCount <= 20 || addGlyphCount % 100 == 0) {
-            FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+            FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
             if (logFile) {
                 fprintf(logFile, "FontBase::addGlyph() called (#%d)\n", addGlyphCount);
                 fprintf(logFile, "  glyphIndex: rast=%d, idx=%d\n", glyphIndex.rasterizerIndex, glyphIndex.index);
@@ -141,7 +141,7 @@ namespace love
 
 #ifdef __WIIU__
         if (addGlyphCount <= 20) {
-            FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+            FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
             if (logFile) {
                 fprintf(logFile, "  glyph size: %dx%d\n", width, height);
                 fflush(logFile);
@@ -177,7 +177,7 @@ namespace love
 
 #ifdef __WIIU__
             if (addGlyphCount <= 20) {
-                FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+                FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
                 if (logFile) {
                     fprintf(logFile, "  setting glyph.texture=%p from textures.back()\n", texture);
                     if (texture) {
@@ -274,7 +274,7 @@ namespace love
         fontPrintCount++;
         
         if (fontPrintCount <= 15 || fontPrintCount % 30 == 0) {
-            FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+            FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
             if (logFile) {
                 fprintf(logFile, "FontBase::print() called (#%d)\n", fontPrintCount);
                 fprintf(logFile, "  graphics=%p, font=%p\n", graphics, this);
@@ -298,7 +298,7 @@ namespace love
 
 #ifdef __WIIU__
         if (fontPrintCount <= 15) {
-            FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+            FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
             if (logFile) {
                 fprintf(logFile, "  after getCodepointsFromString: codepoints.size()=%zu\n", codepoints.codepoints.size());
                 fflush(logFile);
@@ -312,7 +312,7 @@ namespace love
 
 #ifdef __WIIU__
         if (fontPrintCount <= 15) {
-            FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+            FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
             if (logFile) {
                 fprintf(logFile, "  after generateVertices: vertices.size()=%zu, drawcommands.size()=%zu\n", 
                        vertices.size(), drawcommands.size());
@@ -366,7 +366,7 @@ namespace love
         generateCount++;
         
         if (generateCount <= 10 || generateCount % 60 == 0) {
-            FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+            FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
             if (logFile) {
                 fprintf(logFile, "FontBase::generateVertices() called (#%d)\n", generateCount);
                 fprintf(logFile, "  codepoints.size()=%zu\n", codepoints.codepoints.size());
@@ -384,7 +384,7 @@ namespace love
 
 #ifdef __WIIU__
         if (generateCount <= 10) {
-            FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+            FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
             if (logFile) {
                 fprintf(logFile, "  after computeGlyphPositions: glyphPositions.size()=%zu\n", glyphPositions.size());
                 fflush(logFile);
@@ -414,7 +414,7 @@ namespace love
 
 #ifdef __WIIU__
             if (generateCount <= 10 && i < 5) {
-                FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+                FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
                 if (logFile) {
                     fprintf(logFile, "    glyph[%d]: texture=%p, cache=%u->%u\n", 
                            i, glyph.texture, cacheid, textureCacheID);
@@ -429,7 +429,7 @@ namespace love
             {
 #ifdef __WIIU__
                 if (generateCount <= 10) {
-                    FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+                    FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
                     if (logFile) {
                         fprintf(logFile, "  texture cache invalidated, restarting loop\n");
                         fflush(logFile);
@@ -490,7 +490,7 @@ namespace love
 
 #ifdef __WIIU__
         if (generateCount <= 10) {
-            FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+            FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
             if (logFile) {
                 fprintf(logFile, "  generateVertices result: vertices.size()=%zu, commands.size()=%zu\n", 
                        vertices.size(), commands.size());
@@ -629,7 +629,7 @@ namespace love
         static int printvCount = 0;
         printvCount++;
         
-        FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile) {
             fprintf(logFile, "FontBase::printv() called (#%d)\n", printvCount);
             fprintf(logFile, "  vertices.size()=%zu, drawcommands.size()=%zu\n", vertices.size(), drawcommands.size());
@@ -677,7 +677,7 @@ namespace love
             cmdCount++;
             
             if (cmdCount <= 20 || cmdCount % 30 == 0) {
-                FILE* logFile2 = fopen("fs:/vol/external01/simple_debug.log", "a");
+                FILE* logFile2 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
                 if (logFile2) {
                     fprintf(logFile2, "  DrawCommand (#%d): texture=%p, startVertex=%d, vertexCount=%d\n",
                            cmdCount, cmd.texture, cmd.startVertex, cmd.vertexCount);
@@ -708,7 +708,7 @@ namespace love
 
 #ifdef __WIIU__
             if (cmdCount <= 20) {
-                FILE* logFile3 = fopen("fs:/vol/external01/simple_debug.log", "a");
+                FILE* logFile3 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
                 if (logFile3) {
                     fprintf(logFile3, "    requestBatchedDraw returned: stream=%p\n", data.stream);
                     if (data.stream && cmd.vertexCount > 0) {

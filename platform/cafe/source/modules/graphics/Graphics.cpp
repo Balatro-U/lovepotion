@@ -7,6 +7,9 @@
 #include "modules/graphics/ShaderStage.hpp"
 #include "modules/graphics/Texture.hpp"
 #include "modules/graphics/freetype/Font.hpp"
+#ifdef __WIIU__
+extern "C" void love_gx2IncrementIssuedDraws();
+#endif
 
 #ifdef USE_CAFEGLSL
 #include "common/CafeGLSL.hpp"
@@ -30,9 +33,11 @@ namespace love
     Graphics::Graphics() : GraphicsBase("love.graphics.gx2")
     {
 #ifdef __WIIU__
-        FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+        uint64_t startTicks = OSGetSystemTime();
+        FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile) {
-            fprintf(logFile, "Graphics constructor called\n");
+            fprintf(logFile, "[GFX] ctor ENTER (this=%p)\n", (void*)this);
+            fprintf(logFile, "[GFX] ctor phase 0: pre-initialization startTicks=%llu\n", (unsigned long long)startTicks);
             fflush(logFile);
             fclose(logFile);
         }
@@ -47,38 +52,28 @@ namespace love
 #endif
 
 #ifdef USE_CAFEGLSL
-        // Initialize CafeGLSL shader compiler for enhanced rendering
-#ifdef USE_PPC_DEBUGGER
-        PPCDebugger::DebugPoint("CAFEGLSL_INIT_START", "Attempting CafeGLSL initialization");
-#endif
-        if (CafeGLSLCompiler::Initialize())
-        {
+        // Initialize CafeGLSL for shader compilation
 #ifdef __WIIU__
-            FILE* cafeLogFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+        {
+            FILE* cafeLogFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
             if (cafeLogFile) {
-                fprintf(cafeLogFile, "CafeGLSL: Shader compiler initialized successfully\n");
+                fprintf(cafeLogFile, "[GFX] Initializing CafeGLSL for shader compilation\n");
                 fflush(cafeLogFile);
                 fclose(cafeLogFile);
             }
-#ifdef USE_PPC_DEBUGGER
-            PPCDebugger::DebugPoint("CAFEGLSL_INIT_SUCCESS", "CafeGLSL loaded successfully");
-#endif
-#endif
         }
-        else
+        
+        bool cafeGLSLReady = CafeGLSLCompiler::Initialize();
+        
         {
-#ifdef __WIIU__
-            FILE* cafeLogFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+            FILE* cafeLogFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
             if (cafeLogFile) {
-                fprintf(cafeLogFile, "CafeGLSL: Warning - Shader compiler not available, using fallback rendering\n");
+                fprintf(cafeLogFile, "[GFX] CafeGLSL::Initialize() returned: %s\n", cafeGLSLReady ? "true" : "false");
                 fflush(cafeLogFile);
                 fclose(cafeLogFile);
             }
-#ifdef USE_PPC_DEBUGGER
-            PPCDebugger::CriticalError("CafeGLSL failed to initialize - this may cause rendering issues", true);
-#endif
-#endif
         }
+#endif
 #endif
         
         auto* window = Module::getInstance<Window>(M_WINDOW);
@@ -87,7 +82,7 @@ namespace love
 #ifdef USE_PPC_DEBUGGER
         PPCDebugger::DebugPoint("WINDOW_INSTANCE_GET", "Retrieved window instance");
 #endif
-        FILE* logFile2 = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile2 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile2) {
             fprintf(logFile2, "Graphics: got window instance %p\n", (void*)window);
             fflush(logFile2);
@@ -101,7 +96,7 @@ namespace love
 #ifdef USE_PPC_DEBUGGER
             PPCDebugger::DebugPoint("WINDOW_SET_GRAPHICS", "Setting graphics on window");
 #endif
-            FILE* logFile3 = fopen("fs:/vol/external01/simple_debug.log", "a");
+            FILE* logFile3 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
             if (logFile3) {
                 fprintf(logFile3, "Graphics: setting graphics on window\n");
                 fflush(logFile3);
@@ -116,7 +111,7 @@ namespace love
 #ifdef USE_PPC_DEBUGGER
                 PPCDebugger::DebugPoint("WINDOW_IS_OPEN", "Window is open, proceeding with initialization");
 #endif
-                FILE* logFile4 = fopen("fs:/vol/external01/simple_debug.log", "a");
+                FILE* logFile4 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
                 if (logFile4) {
                     fprintf(logFile4, "Graphics: window is open, setting window parameters\n");
                     fflush(logFile4);
@@ -129,7 +124,7 @@ namespace love
                 window->getWindow(width, height, settings);
                 window->setWindow(width, height, &settings);
 #ifdef __WIIU__
-                FILE* logFile5 = fopen("fs:/vol/external01/simple_debug.log", "a");
+                FILE* logFile5 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
                 if (logFile5) {
                     fprintf(logFile5, "Graphics: window parameters set (%dx%d)\n", width, height);
                     fflush(logFile5);
@@ -139,9 +134,11 @@ namespace love
             }
         }
 #ifdef __WIIU__
-        FILE* logFile6 = fopen("fs:/vol/external01/simple_debug.log", "a");
+        uint64_t endTicks = OSGetSystemTime();
+        FILE* logFile6 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile6) {
-            fprintf(logFile6, "Graphics constructor completed\n");
+            fprintf(logFile6, "[GFX] ctor EXIT total=%.2f ms\n", (double)OSTicksToMilliseconds(endTicks - startTicks));
+            fprintf(logFile6, "=== POST-CONSTRUCTOR ANALYSIS ===\nGraphics object: %p\nReturning from Graphics constructor...\n", (void*)this);
             fflush(logFile6);
             fclose(logFile6);
         }
@@ -151,16 +148,25 @@ namespace love
     Graphics::~Graphics()
     {
 #ifdef USE_CAFEGLSL
-        // Cleanup CafeGLSL shader compiler
-        CafeGLSLCompiler::Shutdown();
+        // Shutdown CafeGLSL
 #ifdef __WIIU__
-        FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
-        if (logFile) {
-            fprintf(logFile, "CafeGLSL: Shader compiler shutdown completed\n");
-            fflush(logFile);
-            fclose(logFile);
+        FILE* cafeLogFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
+        if (cafeLogFile) {
+            fprintf(cafeLogFile, "Graphics: Shutting down CafeGLSL\n");
+            fflush(cafeLogFile);
+            fclose(cafeLogFile);
         }
 #endif
+        CafeGLSLCompiler::Shutdown();
+#endif
+
+#ifdef __WIIU__
+        FILE* destructorLogFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
+        if (destructorLogFile) {
+            fprintf(destructorLogFile, "Graphics: Destructor completed\n");
+            fflush(destructorLogFile);
+            fclose(destructorLogFile);
+        }
 #endif
     }
 
@@ -218,7 +224,7 @@ namespace love
     void Graphics::clear(OptionalColor color, OptionalInt stencil, OptionalDouble depth)
     {
 #ifdef __WIIU__
-        FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile) {
             if (color.hasValue) {
                 fprintf(logFile, "Graphics::clear() with color: R=%.2f G=%.2f B=%.2f A=%.2f\n", 
@@ -277,7 +283,7 @@ namespace love
         gx2.bindFramebuffer(&gx2.getInternalBackbuffer());
         
 #ifdef __WIIU__
-        FILE* logFile2 = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile2 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile2) {
             fprintf(logFile2, "Graphics::clear() completed\n");
             fflush(logFile2);
@@ -337,14 +343,14 @@ namespace love
     void Graphics::present(void* screenshotCallbackData)
     {
 #ifdef __WIIU__
-        FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile) {
             fprintf(logFile, "Graphics::present() called - about to flush batched draws\n");
             fflush(logFile);
             fclose(logFile);
         }
 #endif
-        
+        try {
         if (!this->isActive())
             return;
 
@@ -362,7 +368,7 @@ namespace love
             static int cafeGLSLFrameCount = 0;
             cafeGLSLFrameCount++;
             if (cafeGLSLFrameCount <= 5 || cafeGLSLFrameCount % 120 == 0) {
-                FILE* cafeLogFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+                FILE* cafeLogFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
                 if (cafeLogFile) {
                     fprintf(cafeLogFile, "present() using CafeGLSL enhanced rendering (frame %d)\n", cafeGLSLFrameCount);
                     fflush(cafeLogFile);
@@ -378,7 +384,7 @@ namespace love
         static int presentFlushCount = 0;
         presentFlushCount++;
         if (presentFlushCount <= 10 || presentFlushCount % 60 == 0) {
-            FILE* logFile2 = fopen("fs:/vol/external01/simple_debug.log", "a");
+            FILE* logFile2 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
             if (logFile2) {
                 fprintf(logFile2, "present() flushed batched draws (#%d)\n", presentFlushCount);
                 fflush(logFile2);
@@ -388,7 +394,7 @@ namespace love
 #endif
 
 #ifdef __WIIU__
-        FILE* logFile3 = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile3 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile3) {
             fprintf(logFile3, "Graphics::present() - about to call gx2.present()\n");
             fflush(logFile3);
@@ -396,10 +402,10 @@ namespace love
         }
 #endif
 
-        gx2.present();
+    gx2.present();
 
 #ifdef __WIIU__
-        FILE* logFile4 = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile4 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile4) {
             fprintf(logFile4, "Graphics::present() completed\n");
             fflush(logFile4);
@@ -407,9 +413,20 @@ namespace love
         }
 #endif
 
-        this->drawCalls        = 0;
-        this->drawCallsBatched = 0;
-        Shader::shaderSwitches = 0;
+    this->drawCalls        = 0;
+    this->drawCallsBatched = 0;
+    Shader::shaderSwitches = 0;
+    } catch (const std::exception& e) {
+#ifdef __WIIU__
+        FILE* logErr = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
+        if (logErr) { fprintf(logErr, "Graphics::present() exception: %s\n", e.what()); fflush(logErr); fclose(logErr);} 
+#endif
+    } catch (...) {
+#ifdef __WIIU__
+        FILE* logErr2 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
+        if (logErr2) { fprintf(logErr2, "Graphics::present() unknown exception\n"); fflush(logErr2); fclose(logErr2);} 
+#endif
+    }
     }
 
     void Graphics::setScissor(const Rect& scissor)
@@ -503,6 +520,16 @@ namespace love
     void Graphics::setRenderTargetsInternal(const RenderTargets& targets, int pixelWidth, int pixelHeight,
                                             bool hasSRGBTexture)
     {
+#ifdef __WIIU__
+        FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
+        if (logFile) {
+            fprintf(logFile, "setRenderTargetsInternal() called with pixelWidth=%d, pixelHeight=%d\n", 
+                    pixelWidth, pixelHeight);
+            fflush(logFile);
+            fclose(logFile);
+        }
+#endif
+        
         const auto& state = this->states.back();
 
         bool isWindow = targets.getFirstTarget().texture == nullptr;
@@ -542,12 +569,58 @@ namespace love
     ShaderStageBase* Graphics::newShaderStageInternal(ShaderStageType stage, const std::string& filepath)
     {
 #ifdef __WIIU__
-        FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile) {
             fprintf(logFile, "Graphics::newShaderStageInternal() called - stage: %d (%s), filepath: %s\n", 
                     stage, (stage == 0 ? "VERTEX" : "PIXEL"), filepath.c_str());
             fflush(logFile);
             fclose(logFile);
+        }
+        
+        // Special handling for .fs files with CafeGLSL
+        if (filepath.size() > 3 && filepath.substr(filepath.size() - 3) == ".fs" && 
+            stage == SHADERSTAGE_PIXEL) {
+            
+#ifdef USE_CAFEGLSL
+            if (love::CafeGLSLCompiler::IsAvailable()) {
+                FILE* convLogFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
+                if (convLogFile) {
+                    fprintf(convLogFile, "Graphics::newShaderStageInternal() - .fs file detected with CafeGLSL available, attempting conversion: %s\n", filepath.c_str());
+                    fflush(convLogFile);
+                    fclose(convLogFile);
+                }
+                
+                // Read the .fs file content
+                std::FILE* fsFile = std::fopen(filepath.c_str(), "r");
+                if (fsFile) {
+                    std::fseek(fsFile, 0, SEEK_END);
+                    long fileSize = std::ftell(fsFile);
+                    std::rewind(fsFile);
+                    
+                    std::string fsContent(fileSize, '\0');
+                    std::fread(&fsContent[0], 1, fileSize, fsFile);
+                    std::fclose(fsFile);
+                    
+                    // Convert LÖVE2D shader to GLSL
+                    std::string glslSource = love::CafeGLSLCompiler::ConvertLoveShaderToGLSL(fsContent);
+                    
+                    // Compile with CafeGLSL
+                    GX2PixelShader* compiledPS = love::CafeGLSLCompiler::CompilePixelShader(glslSource);
+                    
+                    if (compiledPS) {
+                        FILE* successLog = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
+                        if (successLog) {
+                            fprintf(successLog, "Graphics::newShaderStageInternal() - Successfully converted and compiled .fs shader: %s\n", filepath.c_str());
+                            fflush(successLog);
+                            fclose(successLog);
+                        }
+                        
+                        // Create a special shader stage that holds the compiled shader directly
+                        // For now, fall back to .gsh path since we need to refactor ShaderStage to support this
+                    }
+                }
+            }
+#endif
         }
 #endif
         return new ShaderStage(stage, filepath);
@@ -557,16 +630,17 @@ namespace love
                                             const ShaderBase::CompileOptions& options)
     {
 #ifdef __WIIU__
-        FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile) {
             fprintf(logFile, "Graphics::newShaderInternal() called - about to create new Shader\n");
             fflush(logFile);
             fclose(logFile);
         }
 #endif
-        Shader* shader = new Shader(stages, options);
+    // The Shader constructor will throw love::Exception if loadVolatile fails.
+    Shader* shader = new Shader(stages, options);
 #ifdef __WIIU__
-        FILE* logFile2 = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile2 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile2) {
             fprintf(logFile2, "Graphics::newShaderInternal() - Shader created successfully: %p\n", shader);
             fflush(logFile2);
@@ -580,7 +654,7 @@ namespace love
                            bool backBufferDepth, int msaa)
     {
 #ifdef __WIIU__
-        FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile) {
             fprintf(logFile, "Graphics::setMode() called with %dx%d (pixel: %dx%d)\n", 
                     width, height, pixelWidth, pixelHeight);
@@ -590,10 +664,14 @@ namespace love
         }
 #endif
         
+        // Store the pixel dimensions in member variables so getPixelWidth()/getPixelHeight() work correctly
+        this->pixelWidth = pixelWidth;
+        this->pixelHeight = pixelHeight;
+        
         gx2.initialize();
 
 #ifdef __WIIU__
-        FILE* logFile2 = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile2 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile2) {
             fprintf(logFile2, "Graphics: gx2.initialize() completed\n");
             fflush(logFile2);
@@ -605,11 +683,25 @@ namespace love
         this->initCapabilities();
 
 #ifdef __WIIU__
-        FILE* logFile3 = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile3 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile3) {
             fprintf(logFile3, "Graphics: initCapabilities() completed\n");
             fflush(logFile3);
             fclose(logFile3);
+        }
+#endif
+
+#ifdef __WIIU__
+        // Early readiness marker before heavy shader creation
+        {
+            FILE* readyLog = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
+            if (readyLog) {
+                static uint64_t ctorStart = 0; // best-effort (may be 0 if not set)
+                uint64_t now = OSGetSystemTime();
+                fprintf(readyLog, "[GFX] EARLY_READY after initCapabilities (tick=%llu)\n", (unsigned long long)now);
+                fflush(readyLog);
+                fclose(readyLog);
+            }
         }
 #endif
 
@@ -620,7 +712,7 @@ namespace love
             if (this->batchedDrawState.vertexBuffer == nullptr)
             {
 #ifdef __WIIU__
-                FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+                FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
                 if (logFile) {
                     fprintf(logFile, "Graphics: About to create index buffer with size %d\n", INIT_INDEX_BUFFER_SIZE);
                     fflush(logFile);
@@ -629,7 +721,7 @@ namespace love
 #endif
                 this->batchedDrawState.indexBuffer  = newIndexBuffer(INIT_INDEX_BUFFER_SIZE);
 #ifdef __WIIU__
-                FILE* logFile2 = fopen("fs:/vol/external01/simple_debug.log", "a");
+                FILE* logFile2 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
                 if (logFile2) {
                     fprintf(logFile2, "Graphics: Index buffer created successfully\n");
                     fflush(logFile2);
@@ -638,7 +730,7 @@ namespace love
 #endif
                 
 #ifdef __WIIU__
-                FILE* logFile3 = fopen("fs:/vol/external01/simple_debug.log", "a");
+                FILE* logFile3 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
                 if (logFile3) {
                     fprintf(logFile3, "Graphics: About to create vertex buffer with size %d\n", INIT_VERTEX_BUFFER_SIZE);
                     fflush(logFile3);
@@ -647,7 +739,7 @@ namespace love
 #endif
                 this->batchedDrawState.vertexBuffer = newVertexBuffer(INIT_VERTEX_BUFFER_SIZE);
 #ifdef __WIIU__
-                FILE* logFile4 = fopen("fs:/vol/external01/simple_debug.log", "a");
+                FILE* logFile4 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
                 if (logFile4) {
                     fprintf(logFile4, "Graphics: Vertex buffer created successfully\n");
                     fflush(logFile4);
@@ -662,7 +754,7 @@ namespace love
         }
 
 #ifdef __WIIU__
-        FILE* logFile5 = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile5 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile5) {
             fprintf(logFile5, "Graphics: Buffers created, about to load volatile objects\n");
             fflush(logFile5);
@@ -674,7 +766,7 @@ namespace love
             std::printf("Failed to load all volatile objects.\n");
 
 #ifdef __WIIU__
-        FILE* logFile6 = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile6 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile6) {
             fprintf(logFile6, "Graphics: Volatile objects loaded, about to restore state\n");
             fflush(logFile6);
@@ -685,11 +777,18 @@ namespace love
         this->restoreState(this->states.back());
 
 #ifdef __WIIU__
-        FILE* logFile7 = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile7 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile7) {
-            fprintf(logFile7, "Graphics: State restored, about to create standard shaders\n");
+            fprintf(logFile7, "Graphics: State restored, now trying to initialize CafeGLSL\n");
             fflush(logFile7);
             fclose(logFile7);
+        }
+
+        FILE* logFile7b = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
+        if (logFile7b) {
+            fprintf(logFile7b, "Graphics: About to create standard shaders (CafeGLSL disabled)\n");
+            fflush(logFile7b);
+            fclose(logFile7b);
         }
 #endif
 
@@ -698,7 +797,7 @@ namespace love
             auto type = (Shader::StandardShader)index;
 
 #ifdef __WIIU__
-            FILE* logFile8 = fopen("fs:/vol/external01/simple_debug.log", "a");
+            FILE* logFile8 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
             if (logFile8) {
                 fprintf(logFile8, "Graphics: Creating standard shader %d\n", index);
                 fflush(logFile8);
@@ -715,7 +814,7 @@ namespace love
                 stages.push_back(Shader::getDefaultStagePath(type, SHADERSTAGE_PIXEL));
 
 #ifdef __WIIU__
-                FILE* logFile9 = fopen("fs:/vol/external01/simple_debug.log", "a");
+                FILE* logFile9 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
                 if (logFile9) {
                     fprintf(logFile9, "Graphics: About to create shader %d with stages\n", index);
                     fflush(logFile9);
@@ -727,7 +826,7 @@ namespace love
                 {
                     Shader::standardShaders[type] = this->newShader(stages, options);
 #ifdef __WIIU__
-                    FILE* logFile10 = fopen("fs:/vol/external01/simple_debug.log", "a");
+                    FILE* logFile10 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
                     if (logFile10) {
                         fprintf(logFile10, "Graphics: Shader %d created successfully\n", index);
                         fflush(logFile10);
@@ -738,7 +837,7 @@ namespace love
                 catch (const std::exception& e)
                 {
 #ifdef __WIIU__
-                    FILE* logFile11 = fopen("fs:/vol/external01/simple_debug.log", "a");
+                    FILE* logFile11 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
                     if (logFile11) {
                         fprintf(logFile11, "Graphics: Exception creating shader %d: %s\n", index, e.what());
                         fflush(logFile11);
@@ -751,7 +850,7 @@ namespace love
         }
 
 #ifdef __WIIU__
-        FILE* logFile12 = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile12 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile12) {
             fprintf(logFile12, "Graphics: All standard shaders created, about to attach default shader\n");
             fflush(logFile12);
@@ -763,7 +862,7 @@ namespace love
             Shader::standardShaders[Shader::STANDARD_DEFAULT]->attach();
 
 #ifdef __WIIU__
-        FILE* logFile13 = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile13 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile13) {
             fprintf(logFile13, "Graphics: Default shader attached, setMode() completed successfully\n");
             fflush(logFile13);
@@ -821,6 +920,14 @@ namespace love
 
         GX2RDrawIndexed(mode, buffer, indexType, count, offset, 0, instanceCount);
         ++this->drawCalls;
+#ifdef __WIIU__
+    love_gx2IncrementIssuedDraws();
+    FILE* drawLog = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log","a");
+    if (drawLog) {
+        fprintf(drawLog, "[DRAW-DETAIL] Indexed final issuedDraws=%u\n", gx2.getIssuedDrawsThisFrame());
+        fclose(drawLog);
+    }
+#endif
     }
 
     void Graphics::draw(const DrawCommand& command)
@@ -845,6 +952,14 @@ namespace love
         const auto vertexStart = command.vertexStart;
 
         GX2DrawEx(mode, vertexCount, vertexStart, 1);
-        ++this->drawCalls;
+    ++this->drawCalls;
+#ifdef __WIIU__
+    love_gx2IncrementIssuedDraws();
+    FILE* drawLog2 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log","a");
+    if (drawLog2) {
+        fprintf(drawLog2, "[DRAW-DETAIL] NonIndexed final issuedDraws=%u\n", gx2.getIssuedDrawsThisFrame());
+        fclose(drawLog2);
+    }
+#endif
     }
 } // namespace love

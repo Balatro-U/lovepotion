@@ -3,16 +3,36 @@
 #include "modules/joystick/vpad/Joystick.hpp"
 #include "DebugLogger.hpp"
 
+#ifdef __WIIU__
+#include <cstdio>
+static void joyLog(const char* fmt,...){
+    FILE* f = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log","a");
+    if(f){ va_list ap; va_start(ap,fmt); vfprintf(f,fmt,ap); va_end(ap); fputc('\n',f); fflush(f); fclose(f);} 
+    va_list ap2; va_start(ap2,fmt); vprintf(fmt,ap2); va_end(ap2); printf("\n"); fflush(stdout);
+}
+#endif
+
 namespace love
 {
     namespace vpad
     {
         Joystick::Joystick(int id) : JoystickBase(id), status {}, error {}
-        {}
+        {
+#ifdef __WIIU__
+            joyLog("[VPAD JOYSTICK] ctor(id=%d) begin this=%p", id, (void*)this);
+            joyLog("[VPAD JOYSTICK] ctor(id=%d) end", id);
+#endif
+        }
 
         Joystick::Joystick(int id, int index) : JoystickBase(id, index), status {}, error {}
         {
+#ifdef __WIIU__
+            joyLog("[VPAD JOYSTICK] ctor(id=%d,index=%d) begin this=%p", id, index, (void*)this);
+#endif
             this->open(index);
+#ifdef __WIIU__
+            joyLog("[VPAD JOYSTICK] ctor(id=%d,index=%d) end", id, index);
+#endif
         }
 
         Joystick::~Joystick()

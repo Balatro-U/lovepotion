@@ -80,6 +80,10 @@ namespace love
 
         void copyCurrentScanBuffer();
 
+    // Instrumentation helpers
+    unsigned int getIssuedDrawsThisFrame() const { return issuedDrawsThisFrame; }
+    void incrementIssuedDraws() { issuedDrawsThisFrame++; }
+
         // clang-format off
         ENUMMAP_DECLARE(PixelFormats, PixelFormat, GX2SurfaceFormat,
             { PIXELFORMAT_R8_UNORM,         GX2_SURFACE_FORMAT_UNORM_R8          },
@@ -164,8 +168,8 @@ namespace love
         }
         // clang-format on
 
-      private:
-        std::array<Framebuffer, 2> targets;
+            private:
+                std::array<Framebuffer, 2> targets;
 
         void createFramebuffers();
 
@@ -197,8 +201,12 @@ namespace love
 
         void* commandBuffer;
         GX2ContextState* state;
-        bool dirtyProjection;
+                bool dirtyProjection;
+                unsigned int issuedDrawsThisFrame = 0; // per-frame counter (reset in ensureInFrame)
     };
 
     extern GX2 gx2;
 } // namespace love
+
+// C-linkage helper for incrementing per-frame issued draw counter (implemented in GX2.cpp)
+extern "C" void love_gx2IncrementIssuedDraws();

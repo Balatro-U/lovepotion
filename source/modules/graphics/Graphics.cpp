@@ -1,6 +1,11 @@
 #include "modules/graphics/Graphics.tcc"
 
-#include "modules/graphics/Polyline.hpp"
+#ifdef __WIIU__
+// (Removed direct GX2 counter access; platform-specific Graphics implementation now increments
+// per-frame draw counter after actual GX2 draw submission. Keeping this block empty intentionally.)
+#endif
+
+#include <modules/graphics/Polyline.hpp>
 #include "modules/graphics/SpriteBatch.hpp"
 #include "modules/window/Window.tcc"
 
@@ -66,7 +71,23 @@ namespace love
         auto& state = this->states.back();
 
         state.useCustomProjection = false;
-        this->updateDeviceProjection(Matrix4::ortho(0.0f, 0, 0, 0.0f, -10.0f, 10.0f));
+        // ORIGINAL BUG: passed zeros for right/bottom leading to division by zero in Matrix4::ortho
+        // which produces infinities or collapses geometry -> nothing visible (gray screen).
+        // Use current logical width/height (screen size) for an identity-style top-left origin ortho.
+        int w = this->getWidth();
+        int h = this->getHeight();
+        if (w <= 0) w = 640; // fallback safety
+        if (h <= 0) h = 480; // fallback safety
+
+#ifdef __WIIU__
+        FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
+        if (logFile) {
+            fprintf(logFile, "GraphicsBase::resetProjection() setting ortho 0..%d x 0..%d\n", w, h);
+            fflush(logFile);
+            fclose(logFile);
+        }
+#endif
+        this->updateDeviceProjection(Matrix4::ortho(0.0f, (float)w, (float)h, 0.0f, -10.0f, 10.0f));
     }
 
     void GraphicsBase::reset()
@@ -213,6 +234,13 @@ namespace love
         if (shader == nullptr)
             return this->setShader();
 
+#ifdef __WIIU__
+        // Log any non-null shader attachment requests
+        {
+            FILE* lf = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
+            if (lf) { fprintf(lf, "GraphicsBase::setShader(%p)\n", shader); fflush(lf); fclose(lf);} 
+        }
+#endif
         shader->attach();
         this->states.back().shader.set(shader);
     }
@@ -390,7 +418,7 @@ namespace love
                 static int shaderSwitchCount = 0;
                 shaderSwitchCount++;
                 
-                FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+                FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
                 if (logFile) {
                     const char* typeName = "unknown";
                     switch(state.shaderType) {
@@ -467,7 +495,7 @@ namespace love
             static int emptyFlushCount = 0;
             emptyFlushCount++;
             if (emptyFlushCount <= 5 || emptyFlushCount % 120 == 0) {
-                FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+                FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
                 if (logFile) {
                     fprintf(logFile, "flushBatchedDraws() called but no draw data (empty flush #%d)\n", emptyFlushCount);
                     fflush(logFile);
@@ -482,10 +510,14 @@ namespace love
         static int realFlushCount = 0;
         realFlushCount++;
         if (realFlushCount <= 10 || realFlushCount % 60 == 0) {
-            FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+            FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
             if (logFile) {
                 fprintf(logFile, "flushBatchedDraws() ACTUALLY FLUSHING %d vertices, %d indices (flush #%d)\n", 
                         state.lastVertexCount, state.lastIndexCount, realFlushCount);
+        fprintf(logFile, "  batchState: primitive=%d format=%d texture=%p shaderType=%d isFont=%d pushT=%d vertexCount=%d indexCount=%d lastV=%d lastI=%d\n",
+            (int)state.primitiveMode, (int)state.format, (void*)state.texture, (int)state.shaderType, state.isFont?1:0, state.pushTransform?1:0,
+            state.vertexCount, state.indexCount, state.lastVertexCount, state.lastIndexCount);
+        // Log first two vertices raw (if mapped already) - only safe after map; we rely on later draw logging for transformed
                 fflush(logFile);
                 fclose(logFile);
             }
@@ -531,6 +563,15 @@ namespace love
             command.isFont            = state.isFont;
 
             this->draw(command);
+    #ifdef __WIIU__
+                FILE* f = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log","a");
+                if (f) {
+                    fprintf(f, "[DRAW] issued indexed draw primitive=%d indexCount=%d isFont=%d texture=%p\n",
+                            (int)command.primitiveType, command.indexCount, command.isFont?1:0, (void*)command.texture);
+                    fclose(f);
+                }
+                // Counter increment moved to platform-specific Graphics.cpp after the real GX2 draw call
+    #endif
 
             state.indexBufferMap = MapInfo<uint16_t>();
         }
@@ -543,6 +584,15 @@ namespace love
             command.texture       = state.texture;
 
             this->draw(command);
+    #ifdef __WIIU__
+                FILE* f2 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log","a");
+                if (f2) {
+                    fprintf(f2, "[DRAW] issued draw primitive=%d vertexCount=%d texture=%p\n",
+                            (int)command.primitiveType, command.vertexCount, (void*)command.texture);
+                    fclose(f2);
+                }
+                // Counter increment moved to platform-specific Graphics.cpp after the real GX2 draw call
+    #endif
         }
 
         if (usedSizes[0] > 0)
@@ -575,7 +625,7 @@ namespace love
     ShaderStageBase* GraphicsBase::newShaderStage(ShaderStageType stage, const std::string& filepath)
     {
 #ifdef __WIIU__
-        FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile) {
             fprintf(logFile, "GraphicsBase::newShaderStage() called - stage: %d (%s), filepath: %s\n", 
                     stage, (stage == 0 ? "VERTEX" : "PIXEL"), filepath.c_str());
@@ -597,7 +647,7 @@ namespace love
         StrongRef<ShaderStageBase> stages[SHADERSTAGE_MAX_ENUM] {};
 
 #ifdef __WIIU__
-        FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile) {
             fprintf(logFile, "GraphicsBase::newShader() called with %zu filepaths\n", filepaths.size());
             for (size_t i = 0; i < filepaths.size(); i++) {
@@ -641,7 +691,7 @@ namespace love
                 }
 
 #ifdef __WIIU__
-                FILE* logFile2 = fopen("fs:/vol/external01/simple_debug.log", "a");
+                FILE* logFile2 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
                 if (logFile2) {
                     fprintf(logFile2, "GraphicsBase::newShader() - creating stage %d (%s) with filepath: %s\n", 
                             index, (index == 0 ? "VERTEX" : "PIXEL"), filepath.c_str());
@@ -653,7 +703,7 @@ namespace love
                 stages[index].set(this->newShaderStage(type, filepath), Acquire::NO_RETAIN);
 
 #ifdef __WIIU__
-                FILE* logFile3 = fopen("fs:/vol/external01/simple_debug.log", "a");
+                FILE* logFile3 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
                 if (logFile3) {
                     fprintf(logFile3, "GraphicsBase::newShader() - stage %d (%s) created successfully\n", 
                             index, (index == 0 ? "VERTEX" : "PIXEL"));
@@ -665,7 +715,7 @@ namespace love
         }
 
 #ifdef __WIIU__
-        FILE* logFile4 = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile4 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile4) {
             fprintf(logFile4, "GraphicsBase::newShader() - about to call newShaderInternal()\n");
             fflush(logFile4);
@@ -855,11 +905,27 @@ namespace love
 
     int GraphicsBase::getPixelWidth() const
     {
+#ifdef __WIIU__
+        FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
+        if (logFile) {
+            fprintf(logFile, "getPixelWidth() returning %d\n", this->pixelWidth);
+            fflush(logFile);
+            fclose(logFile);
+        }
+#endif
         return this->pixelWidth;
     }
 
     int GraphicsBase::getPixelHeight() const
     {
+#ifdef __WIIU__
+        FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
+        if (logFile) {
+            fprintf(logFile, "getPixelHeight() returning %d\n", this->pixelHeight);
+            fflush(logFile);
+            fclose(logFile);
+        }
+#endif
         return this->pixelHeight;
     }
 
@@ -1094,6 +1160,19 @@ namespace love
             command.indexMode   = TRIANGLEINDEX_FAN;
             command.vertexCount = (int)vertices.size() - (skipLastFilledVertex ? 1 : 0);
 
+#ifdef __WIIU__
+            if (command.vertexCount > 0) {
+                static int polyLogCount = 0; polyLogCount++;
+                if (polyLogCount <= 15 || polyLogCount % 120 == 0) {
+                    FILE* f = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log","a");
+                    if (f) {
+                        fprintf(f, "[DRAW] polygon enqueue vertexCount=%d skipLast=%d totalVertsInput=%zu (log #%d)\n",
+                                command.vertexCount, skipLastFilledVertex?1:0, vertices.size(), polyLogCount);
+                        fclose(f);
+                    }
+                }
+            }
+#endif
             BatchedVertexData data = this->requestBatchedDraw(command);
 
             XYf_STf_RGBAf* stream = (XYf_STf_RGBAf*)data.stream;
@@ -1109,6 +1188,21 @@ namespace love
 
             if (is2D)
                 transform.transformXY(stream, vertices.data(), command.vertexCount);
+#ifdef __WIIU__
+            if (command.vertexCount > 0) {
+                FILE* f2 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log","a");
+                if (f2) {
+                    float vx0 = stream[0].x, vy0 = stream[0].y;
+                    float vx1 = (command.vertexCount > 1) ? stream[1].x : 0.0f;
+                    float vy1 = (command.vertexCount > 1) ? stream[1].y : 0.0f;
+                    fprintf(f2, "[DRAW] polygon vertices written, color=(%.2f,%.2f,%.2f,%.2f) v0=(%.1f,%.1f) v1=(%.1f,%.1f)\n", 
+                            color.r, color.g, color.b, color.a, vx0, vy0, vx1, vy1);
+                    fclose(f2);
+                }
+                extern float g_lastPolyX; extern float g_lastPolyY; extern bool g_haveLastPoly;
+                g_lastPolyX = stream[0].x; g_lastPolyY = stream[0].y; g_haveLastPoly = true;
+            }
+#endif
         }
     }
 
@@ -1123,6 +1217,17 @@ namespace love
         Vector2 coords[] = { Vector2(x, y), Vector2(x, y + h), Vector2(x + w, y + h), Vector2(x + w, y),
                              Vector2(x, y) };
 
+#ifdef __WIIU__
+        static int rectPolyCount = 0; rectPolyCount++;
+        if (rectPolyCount <= 10 || rectPolyCount % 120 == 0) {
+            FILE* f = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log","a");
+            if (f) {
+                fprintf(f, "[DRAW] rectangle->polygon mode=%d x=%.1f y=%.1f w=%.1f h=%.1f (call #%d)\n",
+                        (int)mode, x, y, w, h, rectPolyCount);
+                fclose(f);
+            }
+        }
+#endif
         this->polygon(mode, coords);
     }
 

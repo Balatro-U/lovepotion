@@ -10,6 +10,7 @@ namespace love
     {
         int send(lua_State* L);
         int hasUniform(lua_State* L);
+    int getWarnings(lua_State* L);
         extern const luaL_Reg functions[];
     }
 }

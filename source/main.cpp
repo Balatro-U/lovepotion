@@ -32,19 +32,7 @@ extern "C"
 #ifdef __WIIU__
 // Simple logging functions using basic C file I/O
 void simpleLog(const char* message) {
-    FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
-    if (logFile == nullptr) {
-        // Try without fs: prefix
-        logFile = fopen("/vol/external01/simple_debug.log", "a");
-    }
-    if (logFile == nullptr) {
-        // Try internal storage
-        logFile = fopen("/vol/storage_mlc01/simple_debug.log", "a");
-    }
-    if (logFile == nullptr) {
-        // Try simple path
-        logFile = fopen("simple_debug.log", "a");
-    }
+    FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
     
     if (logFile != nullptr) {
         time_t rawtime;
@@ -65,16 +53,7 @@ void simpleLog(const char* message) {
 }
 
 void initSimpleLog() {
-    FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "w");
-    if (logFile == nullptr) {
-        logFile = fopen("/vol/external01/simple_debug.log", "w");
-    }
-    if (logFile == nullptr) {
-        logFile = fopen("/vol/storage_mlc01/simple_debug.log", "w");
-    }
-    if (logFile == nullptr) {
-        logFile = fopen("simple_debug.log", "w");
-    }
+    FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "w");
     
     if (logFile != nullptr) {
         fprintf(logFile, "=== LOVE Potion Simple Debug Log ===\n");
@@ -201,6 +180,75 @@ static DoneAction runLove(char** argv, int argc, int& result, love::Variant& res
     lua_setfield(L, -2, "restart");
     restartValue = love::Variant();
 
+    // Inject diagnostics (Lua) BEFORE popping love table
+#ifdef __WIIU__
+    simpleLog("Injecting Lua diagnostics into love table...");
+#endif
+    lua_getfield(L, -1, "_debugLog"); // try to see if exists (optional)
+    lua_pop(L, 1);
+    {
+        const char *diagLua = R"DIAG_LUA(
+            local function lowrite(msg)
+                local f = io.open('/vol/external01/wiiu/apps/balatro/simple_debug.log','a') or io.open('/vol/external01/simple_debug.log','a') or io.open('simple_debug.log','a')
+                if f then f:write('[LUA-DIAG] '..msg..'\n'); f:flush(); f:close() end
+            end
+            local clock = os.clock
+            lowrite('DIAG injection start')
+            if not love._diagInstalled then
+                love._diagInstalled = true
+                local _origRequire = require
+                local rcount = 0
+                function require(m)
+                    rcount = rcount + 1
+                    local memBefore = collectgarbage('count')
+                    local t0 = clock()
+                    if rcount < 200 or (rcount % 25) == 0 then
+                        lowrite(string.format('require #%d BEGIN %s (mem=%.1fKB)', rcount, tostring(m), memBefore))
+                    end
+                    local ok, res = pcall(_origRequire, m)
+                    local dt = (clock() - t0) * 1000.0
+                    local memAfter = collectgarbage('count')
+                    local dmem = memAfter - memBefore
+                    if ok then
+                        if rcount < 200 or (rcount % 25) == 0 then
+                            lowrite(string.format('require #%d END   %s (%.2f ms, memΔ=%.1fKB total=%.1fKB)', rcount, tostring(m), dt, dmem, memAfter))
+                        end
+                        return res
+                    else
+                        lowrite(string.format('require #%d ERROR %s : %s (%.2f ms)', rcount, tostring(m), tostring(res), dt))
+                        error(res)
+                    end
+                end
+                if love.boot and type(love.boot)=='function' then
+                    local _origBoot = love.boot
+                    love.boot = function(...)
+                        lowrite('love.boot enter')
+                        local r = {_origBoot(...)}
+                        lowrite('love.boot returned '..#r..' values')
+                        for i,v in ipairs(r) do lowrite('boot ret['..i..']='..type(v)) end
+                        return table.unpack(r)
+                    end
+                else
+                    lowrite('love.boot missing or not function at injection')
+                end
+            else
+                lowrite('DIAG already installed')
+            end
+            lowrite('DIAG injection end')
+        )DIAG_LUA";
+        if (luaL_dostring(L, diagLua) != 0) {
+#ifdef __WIIU__
+            simpleLog("Lua diagnostic injection failed");
+#endif
+            lua_pop(L,1);
+        }
+#ifdef __WIIU__
+        simpleLog("Lua diagnostics injected (or attempted)");
+#endif
+    }
+
+    lua_pop(L, 1); // pop love table
+
     lua_pop(L, 1);
 
 #ifdef __WIIU__
@@ -217,7 +265,7 @@ static DoneAction runLove(char** argv, int argc, int& result, love::Variant& res
     simpleLog("love.boot loaded, checking what was returned...");
     
     // Debug what love.boot returned
-    FILE* bootLog = fopen("fs:/vol/external01/simple_debug.log", "a");
+    FILE* bootLog = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
     if (bootLog) {
         int stackTop = lua_gettop(L);
         fprintf(bootLog, "=== LOVE.BOOT RETURN VALUE ANALYSIS ===\n");
@@ -265,7 +313,7 @@ static DoneAction runLove(char** argv, int argc, int& result, love::Variant& res
 
 #ifdef __WIIU__
     // Debug the corrected thread setup
-    FILE* threadLog = fopen("fs:/vol/external01/simple_debug.log", "a");
+    FILE* threadLog = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
     if (threadLog) {
         int stackTop = lua_gettop(L);
         fprintf(threadLog, "=== CORRECTED THREAD SETUP ===\n");
@@ -337,7 +385,6 @@ static DoneAction runLove(char** argv, int argc, int& result, love::Variant& res
     updateLoadingScreen(0.9f, "Engine initialized, starting main loop...");
     simpleLog("Starting main loop...");
     love::DebugLogger::log("About to enter main loop with position=%d", position);
-    
     simpleLog("About to call first love::mainLoop()...");
 #endif
 

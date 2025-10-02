@@ -4,10 +4,26 @@
 #include <padscore/kpad.h>
 #include <cstring>
 
+#ifdef __WIIU__
+#include "DebugLogger.hpp"
+#include <cstdio>
+static void mouseLog(const char* fmt,...){
+    FILE* f = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log","a");
+    if(f){
+        va_list ap; va_start(ap,fmt); vfprintf(f,fmt,ap); va_end(ap); fputc('\n',f); fflush(f); fclose(f);
+    }
+    // Mirror to console (may not show but harmless)
+    va_list ap2; va_start(ap2,fmt); vprintf(fmt,ap2); va_end(ap2); printf("\n"); fflush(stdout);
+}
+#endif
+
 namespace love
 {
     Mouse::Mouse() : MouseBase()
     {
+#ifdef __WIIU__
+        mouseLog("[MOUSE] Constructor begin this=%p", (void*)this);
+#endif
         // Initialize touch data
         touchData.x = 0;
         touchData.y = 0;
@@ -24,10 +40,12 @@ namespace love
         
         // Initialize KPAD for Wiimote support
         KPADInit();
+#ifdef __WIIU__
+        mouseLog("[MOUSE] Constructor end");
+#endif
     }
 
-    Mouse::~Mouse()
-    {}
+    // Destructor is trivial; defined inline in the header.
 
     void Mouse::getPosition(double& x, double& y) const
     {

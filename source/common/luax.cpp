@@ -157,7 +157,7 @@ namespace love
         fflush(stdout);
         
         // Also log to file for debugging
-        FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile) {
             fprintf(logFile, "luax_resume() call #%d with argc=%d\n", resumeCallCount, argc);
             fflush(logFile);
@@ -165,7 +165,7 @@ namespace love
         }
         
         // Log timestamp to detect how long lua_resume takes
-        FILE* timeLog = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* timeLog = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (timeLog) {
             fprintf(timeLog, "lua_resume() call #%d starting at system time, elapsed: %lld ms\n", resumeCallCount, elapsed);
             fflush(timeLog);
@@ -173,7 +173,7 @@ namespace love
         }
         
         // Log current Lua stack state
-        FILE* logFile3 = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile3 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile3) {
             fprintf(logFile3, "Lua stack top: %d\n", lua_gettop(L));
             fflush(logFile3);
@@ -184,7 +184,7 @@ namespace love
         fflush(stdout);
         
         // Add file logging too  
-        FILE* logFileA = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFileA = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFileA) {
             fprintf(logFileA, "About to call lua_resume()...\n");
             
@@ -223,7 +223,7 @@ namespace love
         if (!thread) {
             // Emergency fallback - this should not happen
 #ifdef __WIIU__
-            FILE* errorLog = fopen("fs:/vol/external01/simple_debug.log", "a");
+            FILE* errorLog = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
             if (errorLog) {
                 fprintf(errorLog, "CRITICAL ERROR: No thread found at top of stack in luax_resume!\n");
                 fprintf(errorLog, "Stack has %d items, top type: %s\n", stackTop, 
@@ -236,7 +236,7 @@ namespace love
         }
 
 #ifdef __WIIU__
-        FILE* threadLog = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* threadLog = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (threadLog) {
             fprintf(threadLog, "About to resume thread (not main state) with argc=%d\n", argc);
             int threadStackTop = lua_gettop(thread);
@@ -264,7 +264,7 @@ namespace love
 #endif
 
 #ifdef __WIIU__
-        FILE* preResumeLog = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* preResumeLog = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (preResumeLog) {
             fprintf(preResumeLog, "About to call lua_resume() with thread=%p, L=%p, argc=%d\n", thread, L, argc);
             fflush(preResumeLog);
@@ -309,7 +309,7 @@ namespace love
         
 #ifdef __WIIU__
         // Write the current state to a separate file for crash recovery
-        FILE* stateFile = fopen("fs:/vol/external01/lua_state.log", "w");
+        FILE* stateFile = fopen("/vol/external01/wiiu/apps/balatro/lua_state.log", "w");
         if (stateFile) {
             fprintf(stateFile, "Last known Lua state before potential hang:\n");
             fprintf(stateFile, "%s\n", lastLuaState);
@@ -320,7 +320,7 @@ namespace love
 #endif
         
 #ifdef __WIIU__
-        FILE* aboutToCallLog = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* aboutToCallLog = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (aboutToCallLog) {
             fprintf(aboutToCallLog, "=== ABOUT TO CALL lua_resume() ===\n");
             fprintf(aboutToCallLog, "Thread: %p, argc: %d, result initialized to: %d\n", thread, argc, result);
@@ -330,16 +330,31 @@ namespace love
         }
 #endif
         
+    // Watchdog removed for stability on Wii U. We'll rely on elapsed timing after the call instead.
         try {
 #ifdef __WIIU__
             printf("[LUAX_RESUME] Entering lua_resume call...\n");
             fflush(stdout);
             
-            FILE* enteringLog = fopen("fs:/vol/external01/simple_debug.log", "a");
+            FILE* enteringLog = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
             if (enteringLog) {
                 fprintf(enteringLog, "=== ENTERING lua_resume() CALL ===\n");
+                fprintf(enteringLog, "Thread: %p, argc: %d, result initialized to: %d\n", (void*)thread, argc, result);
                 fflush(enteringLog);
                 fclose(enteringLog);
+            }
+            
+            // CRITICAL: Additional pre-call verification
+            FILE* preCallLog = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
+            if (preCallLog) {
+                fprintf(preCallLog, "=== FINAL PRE-CALL VERIFICATION ===\n");
+                fprintf(preCallLog, "Thread status before call: %d\n", lua_status(thread));
+                fprintf(preCallLog, "Thread stack size: %d\n", lua_gettop(thread));
+                fprintf(preCallLog, "Main L stack size: %d\n", lua_gettop(L));
+                fprintf(preCallLog, "About to call lua_resume with thread=%p, L=%p, argc=%d\n", 
+                        (void*)thread, (void*)L, argc);
+                fflush(preCallLog);
+                fclose(preCallLog);
             }
 #endif
 
@@ -356,18 +371,26 @@ namespace love
 #ifdef __WIIU__
             printf("[LUAX_RESUME] lua_resume call completed normally\n");
             fflush(stdout);
-            
-            FILE* completedLog = fopen("fs:/vol/external01/simple_debug.log", "a");
+
+            uint64_t endTicks = OSGetSystemTime();
+            uint64_t elapsedSinceFirst = 0;
+            if (startTime != 0) {
+                elapsedSinceFirst = OSTicksToMilliseconds(endTicks - startTime);
+            }
+            FILE* completedLog = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
             if (completedLog) {
                 fprintf(completedLog, "=== lua_resume() CALL COMPLETED ===\n");
-                fprintf(completedLog, "Result: %d\n", result);
+                fprintf(completedLog, "Result: %d (elapsed=%lld ms since first resume start)\n", result, (long long)elapsedSinceFirst);
+                fprintf(completedLog, "Thread status after call: %d\n", lua_status(thread));
+                fprintf(completedLog, "Thread stack size after call: %d\n", lua_gettop(thread));
+                fprintf(completedLog, "Main L stack size after call: %d\n", lua_gettop(L));
                 fflush(completedLog);
                 fclose(completedLog);
             }
 #endif
         } catch (...) {
 #ifdef __WIIU__
-            FILE* crashLog = fopen("fs:/vol/external01/simple_debug.log", "a");
+            FILE* crashLog = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
             if (crashLog) {
                 fprintf(crashLog, "CRASH: Exception caught in lua_resume call!\n");
                 fflush(crashLog);
@@ -379,8 +402,10 @@ namespace love
             return 2; // LUA_ERRRUN - Return error on crash
         }
 
+    // (Watchdog removed) No thread to join.
+
 #ifdef __WIIU__
-        FILE* postResumeLog = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* postResumeLog = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (postResumeLog) {
             fprintf(postResumeLog, "lua_resume() completed successfully with result=%d\n", result);
             fflush(postResumeLog);
@@ -403,7 +428,7 @@ namespace love
         fflush(stdout);
         
         // Also log to file for debugging with more detail
-        FILE* logFile2 = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile2 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile2) {
             fprintf(logFile2, "lua_resume() call #%d returned %d", resumeCallCount, result);
             if (result == 1) { // 1 = LUA_YIELD in Lua 5.1
@@ -1123,7 +1148,7 @@ namespace love
     int luax_convobj(lua_State* L, std::span<int> indices, const char* module, const char* function)
     {
 #ifdef __WIIU__
-        FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile) {
             fprintf(logFile, "luax_convobj() called with module=%s, function=%s, indices.size()=%zu\n", 
                     module, function, indices.size());
@@ -1135,7 +1160,7 @@ namespace love
         luax_getfunction(L, module, function);
 
 #ifdef __WIIU__
-        FILE* logFile2 = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile2 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile2) {
             fprintf(logFile2, "luax_convobj() - got function, about to push %zu values\n", indices.size());
             fflush(logFile2);
@@ -1147,7 +1172,7 @@ namespace love
             lua_pushvalue(L, index);
 
 #ifdef __WIIU__
-        FILE* logFile3 = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile3 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile3) {
             fprintf(logFile3, "luax_convobj() - about to call function with %d arguments\n", (int)indices.size());
             fflush(logFile3);
@@ -1158,7 +1183,7 @@ namespace love
         lua_call(L, (int)indices.size(), 2);
 
 #ifdef __WIIU__
-        FILE* logFile4 = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile4 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile4) {
             fprintf(logFile4, "luax_convobj() - function call completed, checking for errors\n");
             fflush(logFile4);
@@ -1173,7 +1198,7 @@ namespace love
             lua_replace(L, indices[0]);
 
 #ifdef __WIIU__
-        FILE* logFile5 = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile5 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile5) {
             fprintf(logFile5, "luax_convobj() - completed successfully\n");
             fflush(logFile5);
@@ -1213,7 +1238,20 @@ namespace love
 
     int luax_register_module(lua_State* L, const WrappedModule& module)
     {
+#ifdef __WIIU__
+        uint64_t regStart = OSGetSystemTime();
+        {
+            FILE* f = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log","a");
+            if (f) { fprintf(f, "[LUA_REG] ENTER name=%s instance=%p type=%s\n", module.name, (void*)module.instance, module.instance?module.instance->getName():"(null)"); fclose(f);}        
+        }
+#endif
         module.type->initialize();
+#ifdef __WIIU__
+        {
+            FILE* f = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log","a");
+            if (f) { fprintf(f, "[LUA_REG] after type->initialize()\n"); fclose(f);}        
+        }
+#endif
 
         luax_insistregistry(L, REGISTRY_MODULES);
         Proxy* proxy = (Proxy*)lua_newuserdata(L, sizeof(Proxy));
@@ -1230,24 +1268,97 @@ namespace love
 
         lua_setmetatable(L, -2);
         lua_setfield(L, -2, module.name);
-        lua_pop(L, 1);
+    lua_pop(L, 1);
+#ifdef __WIIU__
+    {
+        FILE* f = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log","a");
+        if (f) { fprintf(f, "[LUA_REG] proxy/metatable setup complete\n"); fclose(f);}        
+    }
+#endif
 
-        luax_insistglobal(L, "love");
+    // Ensure we have the global 'love' table and capture its absolute index (Lua 5.1-compatible)
+    luax_insistglobal(L, "love");
+    int loveidx = lua_gettop(L); // 'love' table is now at the top
+#ifdef __WIIU__
+    {
+        FILE* f = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log","a");
+        if (f) { fprintf(f, "[LUA_REG] obtained global 'love' table at idx=%d\n", loveidx); fclose(f);}        
+    }
+#endif
 
-        lua_newtable(L);
+    // Create the module table and capture its absolute index (top)
+    lua_newtable(L);
+    int moduleidx = lua_gettop(L);
+#ifdef __WIIU__
+    {
+        FILE* f = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log","a");
+        if (f) { fprintf(f, "[LUA_REG] created module table idx=%d\n", moduleidx); fclose(f);}        
+    }
+#endif
 
-        if (!module.functions.empty())
-            luax_register_type_inner(L, module.functions);
+        // Register functions into the module table currently at moduleidx
+    if (!module.functions.empty()) {
+#ifdef __WIIU__
+        FILE* f = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log","a");
+        if (f) { fprintf(f, "[LUA_REG] registering %zu module.functions\n", module.functions.size()); fclose(f);}        
+#endif
+        luax_register_type_inner(L, module.functions);
+#ifdef __WIIU__
+        {
+        FILE* f2 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log","a");
+        if (f2) { fprintf(f2, "[LUA_REG] module.functions registration complete\n"); fclose(f2);}        
+        }
+#endif
+    }
 
-        if (!module.platformFunctions.empty())
-            luax_register_type_inner(L, module.platformFunctions);
+    if (!module.platformFunctions.empty()) {
+#ifdef __WIIU__
+        FILE* f = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log","a");
+        if (f) { fprintf(f, "[LUA_REG] registering %zu platformFunctions\n", module.platformFunctions.size()); fclose(f);}        
+#endif
+        luax_register_type_inner(L, module.platformFunctions);
+#ifdef __WIIU__
+        {
+        FILE* f2 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log","a");
+        if (f2) { fprintf(f2, "[LUA_REG] platformFunctions registration complete\n"); fclose(f2);}        
+        }
+#endif
+    }
 
-        if (!module.types.empty())
-            luax_register_types(L, module.types);
+    if (!module.types.empty()) {
+#ifdef __WIIU__
+        FILE* f = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log","a");
+        if (f) { fprintf(f, "[LUA_REG] registering %zu types\n", module.types.size()); fclose(f);}        
+#endif
+        luax_register_types(L, module.types);
+#ifdef __WIIU__
+        {
+        FILE* f2 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log","a");
+        if (f2) { fprintf(f2, "[LUA_REG] types registration complete\n"); fclose(f2);}        
+        }
+#endif
+    }
 
-        lua_pushvalue(L, -1);
-        lua_setfield(L, -3, module.name);
-        lua_remove(L, -2);
+    // Set love[module.name] = module table using captured indices to avoid stack index bugs
+    lua_pushvalue(L, moduleidx);
+    lua_setfield(L, loveidx, module.name);
+#ifdef __WIIU__
+    {
+        FILE* f = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log","a");
+        if (f) { fprintf(f, "[LUA_REG] love.%s assigned\n", module.name); fclose(f);}        
+    }
+#endif
+
+    // Remove the 'love' table from the stack, leaving the module table to be returned
+    lua_remove(L, loveidx);
+#ifdef __WIIU__
+    {
+        uint64_t regEnd = OSGetSystemTime();
+        double ms = (double)OSTicksToMilliseconds(regEnd - regStart);
+        FILE* f = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log","a");
+        if (f) { fprintf(f, "[LUA_REG] EXIT name=%s total=%.2f ms\n", module.name, ms); fclose(f);}        
+    }
+#endif
 
         return 1;
     }
@@ -1299,12 +1410,36 @@ namespace love
 
         lua_pushcfunction(L, w_release);
         lua_setfield(L, -2, "release");
+#ifdef __WIIU__
+        // Log after creating metatable for this type
+        FILE* f = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log","a");
+        if (f) {
+            fprintf(f, "[LUA_REG][TYPE_INIT] metatable created for type=%s\n", type->getName());
+            fclose(f);
+        }
+#endif
     }
 
     void luax_register_type_inner(lua_State* L, std::span<const luaL_Reg> functions)
     {
         for (const auto& registry : functions)
         {
+            // Some function tables (e.g., Shader) previously included a null sentinel like { nullptr, nullptr }.
+            // The original loop assumed no sentinel. Hitting a nullptr func caused a hang/crash when
+            // calling lua_pushcfunction. Guard against this and break on first null to mimic typical
+            // luaL_Reg termination semantics.
+            if (registry.name == nullptr || registry.func == nullptr)
+            {
+#ifdef __WIIU__
+                FILE* f = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log","a");
+                if (f) { fprintf(f, "[LUA_REG][TYPE_INNER] encountered null sentinel, breaking out of functions loop\n"); fclose(f);}            
+#endif
+                break;
+            }
+#ifdef __WIIU__
+            FILE* f2 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log","a");
+            if (f2) { fprintf(f2, "[LUA_REG][TYPE_INNER] registering method name=%s\n", registry.name); fclose(f2);}            
+#endif
             lua_pushcfunction(L, registry.func);
             lua_setfield(L, -2, registry.name);
         }
@@ -1312,8 +1447,19 @@ namespace love
 
     void luax_register_types(lua_State* L, std::span<const lua_CFunction> types)
     {
-        for (const auto& registry : types)
-            registry(L);
+    int idx = 0;
+    for (const auto& registry : types) {
+#ifdef __WIIU__
+        FILE* f = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log","a");
+        if (f) { fprintf(f, "[LUA_REG][TYPES] calling type index=%d\n", idx); fclose(f);}        
+#endif
+        registry(L);
+#ifdef __WIIU__
+        FILE* f2 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log","a");
+        if (f2) { fprintf(f2, "[LUA_REG][TYPES] returned from type index=%d\n", idx); fclose(f2);}        
+#endif
+        idx++;
+    }
     }
 
     int luax_traceback(lua_State* L)

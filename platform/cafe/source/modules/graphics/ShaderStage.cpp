@@ -20,7 +20,7 @@ namespace love
     bool ShaderStage::loadVolatile()
     {
 #ifdef __WIIU__
-        FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile) {
             fprintf(logFile, "ShaderStage::loadVolatile() starting - file: %s\n", this->filepath.c_str());
             fflush(logFile);
@@ -33,7 +33,7 @@ namespace love
         if (!file)
         {
 #ifdef __WIIU__
-            FILE* logFile2 = fopen("fs:/vol/external01/simple_debug.log", "a");
+            FILE* logFile2 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
             if (logFile2) {
                 fprintf(logFile2, "ShaderStage::loadVolatile() - Failed to open file: %s\n", this->filepath.c_str());
                 fflush(logFile2);
@@ -45,7 +45,7 @@ namespace love
         }
 
 #ifdef __WIIU__
-        FILE* logFile3 = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile3 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile3) {
             fprintf(logFile3, "ShaderStage::loadVolatile() - file opened successfully\n");
             fflush(logFile3);
@@ -58,7 +58,7 @@ namespace love
         std::rewind(file);
 
 #ifdef __WIIU__
-        FILE* logFile4 = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile4 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile4) {
             fprintf(logFile4, "ShaderStage::loadVolatile() - file size: %ld bytes\n", size);
             fflush(logFile4);
@@ -69,7 +69,7 @@ namespace love
         if (size <= 0)
         {
 #ifdef __WIIU__
-            FILE* logFile5 = fopen("fs:/vol/external01/simple_debug.log", "a");
+            FILE* logFile5 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
             if (logFile5) {
                 fprintf(logFile5, "ShaderStage::loadVolatile() - Invalid file size: %ld\n", size);
                 fflush(logFile5);
@@ -82,7 +82,7 @@ namespace love
         }
 
 #ifdef __WIIU__
-        FILE* logFile6 = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile6 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile6) {
             fprintf(logFile6, "ShaderStage::loadVolatile() - about to resize code vector to %ld bytes\n", size);
             fflush(logFile6);
@@ -94,7 +94,7 @@ namespace love
         {
             this->code.resize(size);
 #ifdef __WIIU__
-            FILE* logFile7 = fopen("fs:/vol/external01/simple_debug.log", "a");
+            FILE* logFile7 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
             if (logFile7) {
                 fprintf(logFile7, "ShaderStage::loadVolatile() - code vector resized successfully\n");
                 fflush(logFile7);
@@ -105,7 +105,7 @@ namespace love
         catch (std::bad_alloc&)
         {
 #ifdef __WIIU__
-            FILE* logFile8 = fopen("fs:/vol/external01/simple_debug.log", "a");
+            FILE* logFile8 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
             if (logFile8) {
                 fprintf(logFile8, "ShaderStage::loadVolatile() - OUT OF MEMORY during resize!\n");
                 fflush(logFile8);
@@ -120,7 +120,7 @@ namespace love
         size_t read = std::fread(this->code.data(), size, 1, file);
 
 #ifdef __WIIU__
-        FILE* logFile9 = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile9 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile9) {
             fprintf(logFile9, "ShaderStage::loadVolatile() - fread completed, read %zu items (expected 1)\n", read);
             fflush(logFile9);
@@ -131,7 +131,7 @@ namespace love
         if (read < 1)
         {
 #ifdef __WIIU__
-            FILE* logFile10 = fopen("fs:/vol/external01/simple_debug.log", "a");
+            FILE* logFile10 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
             if (logFile10) {
                 fprintf(logFile10, "ShaderStage::loadVolatile() - FREAD FAILED! read=%zu, expected=1\n", read);
                 fflush(logFile10);
@@ -146,7 +146,7 @@ namespace love
         std::fclose(file);
 
 #ifdef __WIIU__
-        FILE* logFile11 = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile11 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile11) {
             fprintf(logFile11, "ShaderStage::loadVolatile() - file closed, about to check shader stage type\n");
             fflush(logFile11);
@@ -157,7 +157,7 @@ namespace love
         if (this->getStageType() == SHADERSTAGE_VERTEX)
         {
 #ifdef __WIIU__
-            FILE* logFile12 = fopen("fs:/vol/external01/simple_debug.log", "a");
+            FILE* logFile12 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
             if (logFile12) {
                 fprintf(logFile12, "ShaderStage::loadVolatile() - Loading VERTEX shader, about to call WHBGfxLoadGFDVertexShader\n");
                 fflush(logFile12);
@@ -167,7 +167,7 @@ namespace love
             this->vertex = WHBGfxLoadGFDVertexShader(0, this->code.data());
 
 #ifdef __WIIU__
-            FILE* logFile13 = fopen("fs:/vol/external01/simple_debug.log", "a");
+            FILE* logFile13 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
             if (logFile13) {
                 fprintf(logFile13, "ShaderStage::loadVolatile() - WHBGfxLoadGFDVertexShader returned: %p\n", this->vertex);
                 fflush(logFile13);
@@ -178,7 +178,7 @@ namespace love
             if (!this->vertex)
             {
 #ifdef __WIIU__
-                FILE* logFile14 = fopen("fs:/vol/external01/simple_debug.log", "a");
+                FILE* logFile14 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
                 if (logFile14) {
                     fprintf(logFile14, "ShaderStage::loadVolatile() - VERTEX SHADER LOAD FAILED!\n");
                     fflush(logFile14);
@@ -193,7 +193,7 @@ namespace love
         if (this->getStageType() == SHADERSTAGE_PIXEL)
         {
 #ifdef __WIIU__
-            FILE* logFile15 = fopen("fs:/vol/external01/simple_debug.log", "a");
+            FILE* logFile15 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
             if (logFile15) {
                 fprintf(logFile15, "ShaderStage::loadVolatile() - Loading PIXEL shader, about to call WHBGfxLoadGFDPixelShader\n");
                 fflush(logFile15);
@@ -203,7 +203,7 @@ namespace love
             this->pixel = WHBGfxLoadGFDPixelShader(0, this->code.data());
 
 #ifdef __WIIU__
-            FILE* logFile16 = fopen("fs:/vol/external01/simple_debug.log", "a");
+            FILE* logFile16 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
             if (logFile16) {
                 fprintf(logFile16, "ShaderStage::loadVolatile() - WHBGfxLoadGFDPixelShader returned: %p\n", this->pixel);
                 fflush(logFile16);
@@ -214,7 +214,7 @@ namespace love
             if (!this->pixel)
             {
 #ifdef __WIIU__
-                FILE* logFile17 = fopen("fs:/vol/external01/simple_debug.log", "a");
+                FILE* logFile17 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
                 if (logFile17) {
                     fprintf(logFile17, "ShaderStage::loadVolatile() - PIXEL SHADER LOAD FAILED!\n");
                     fflush(logFile17);
@@ -227,7 +227,7 @@ namespace love
         }
 
 #ifdef __WIIU__
-        FILE* logFile18 = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile18 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile18) {
             fprintf(logFile18, "ShaderStage::loadVolatile() - COMPLETED SUCCESSFULLY\n");
             fflush(logFile18);

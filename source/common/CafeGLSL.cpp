@@ -1,12 +1,24 @@
 #include "common/CafeGLSL.hpp"
 
-#ifdef USE_CAFEGLSL
+// CafeGLSL is always enabled - using DYNAMIC RPL LOADING
 
 #ifdef __WIIU__
-#include <coreinit/dynload.h>
-#include <coreinit/filesystem.h>
+// Use dynamic RPL loading instead of static linking
+#include <gx2/shaders.h>
 #include <coreinit/debug.h>
 #include <whb/log.h>
+#include <coreinit/dynload.h>
+
+// Dynamic function pointers for CafeGLSL RPL functions (renamed to avoid conflicts)
+static void (*rpl_InitGLSLCompiler)() = nullptr;
+static void (*rpl_DestroyGLSLCompiler)() = nullptr;
+static GX2VertexShader* (*rpl_CompileVertexShader)(const char* shaderSource, char* infoLogOut, int infoLogMaxLength, int flags) = nullptr;
+static GX2PixelShader* (*rpl_CompilePixelShader)(const char* shaderSource, char* infoLogOut, int infoLogMaxLength, int flags) = nullptr;
+static void (*rpl_FreeVertexShader)(GX2VertexShader* shader) = nullptr;
+static void (*rpl_FreePixelShader)(GX2PixelShader* shader) = nullptr;
+
+// RPL handle
+static OSDynLoad_Module s_rplHandle = 0;
 #else
 // Dummy implementations for non-Wii U builds
 struct GX2VertexShader {};
@@ -15,29 +27,9 @@ struct GX2PixelShader {};
 
 namespace love
 {
-    // Static member definitions
+    // Static member definitions - for static linking
     bool CafeGLSLCompiler::s_initialized = false;
     bool CafeGLSLCompiler::s_available = false;
-
-#ifdef __WIIU__
-    // Dynamic loading variables
-    OSDynLoad_Module CafeGLSLCompiler::s_compilerModule = nullptr;
-    
-    // Function pointers
-    typedef void (*InitGLSLCompilerFunc)();
-    typedef GX2VertexShader* (*CompileVertexShaderFunc)(const char* source, char* infoLog, int infoLogSize, int flags);
-    typedef GX2PixelShader* (*CompilePixelShaderFunc)(const char* source, char* infoLog, int infoLogSize, int flags);
-    typedef void (*FreeVertexShaderFunc)(GX2VertexShader* shader);
-    typedef void (*FreePixelShaderFunc)(GX2PixelShader* shader);
-    typedef void (*DestroyGLSLCompilerFunc)();
-    
-    InitGLSLCompilerFunc CafeGLSLCompiler::s_initCompiler = nullptr;
-    CompileVertexShaderFunc CafeGLSLCompiler::s_compileVertexShader = nullptr;
-    CompilePixelShaderFunc CafeGLSLCompiler::s_compilePixelShader = nullptr;
-    FreeVertexShaderFunc CafeGLSLCompiler::s_freeVertexShader = nullptr;
-    FreePixelShaderFunc CafeGLSLCompiler::s_freePixelShader = nullptr;
-    DestroyGLSLCompilerFunc CafeGLSLCompiler::s_destroyCompiler = nullptr;
-#endif
 
     bool CafeGLSLCompiler::Initialize()
     {
@@ -47,103 +39,101 @@ namespace love
         s_initialized = true;
 
 #ifdef __WIIU__
-        // Try to load the CafeGLSL library
-        const char* possiblePaths[] = {
-            "fs:/vol/content/glslcompiler.rpl",
-            "/vol/content/glslcompiler.rpl",
-            "content/glslcompiler.rpl",
-            "fs:/content/glslcompiler.rpl",
-            "./content/glslcompiler.rpl",
-            "glslcompiler.rpl"
-        };
-        
-        WHBLogPrintf("CafeGLSL: Attempting to initialize shader compiler...");
-        
-        OSDynLoad_Error result = (OSDynLoad_Error)0;
-        for (const char* path : possiblePaths)
+        // Log directly to debug file
         {
-            WHBLogPrintf("CafeGLSL: Trying to load from: %s", path);
-            result = OSDynLoad_Acquire(path, &s_compilerModule);
-            if (result == OS_DYNLOAD_OK)
-            {
-                WHBLogPrintf("CafeGLSL: Successfully loaded compiler module from: %s", path);
-                break;
-            }
-            else
-            {
-                WHBLogPrintf("CafeGLSL: Failed to load from %s (error: %d)", path, result);
+            FILE* debugFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
+            if (debugFile) {
+                fprintf(debugFile, "[CafeGLSL] Initialize() called - using DYNAMIC RPL LOADING\n");
+                fflush(debugFile);
+                fclose(debugFile);
             }
         }
 
-        if (result != OS_DYNLOAD_OK)
-        {
-            WHBLogPrintf("CafeGLSL: Failed to load glslcompiler.rpl from any location");
+        WHBLogPrintf("CafeGLSL: Loading glslcompiler.rpl...");
+        
+        // Load CafeGLSL RPL dynamically from content directory
+        OSDynLoad_Error result = OSDynLoad_Acquire("/vol/content/glslcompiler.rpl", &s_rplHandle);
+        if (result != OS_DYNLOAD_OK) {
+            FILE* debugFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
+            if (debugFile) {
+                fprintf(debugFile, "[CafeGLSL] Failed to load glslcompiler.rpl, error: %d\n", result);
+                fflush(debugFile);
+                fclose(debugFile);
+            }
+            
+            WHBLogPrintf("CafeGLSL: Failed to load glslcompiler.rpl, error: %d", result);
             s_available = false;
             return false;
         }
-
-        // Load all required functions
-        bool allFunctionsLoaded = true;
-        if (OSDynLoad_FindExport(s_compilerModule, (OSDynLoad_ExportType)0, "GLSL_Init", (void**)&s_initCompiler) != OS_DYNLOAD_OK)
-        {
-            WHBLogPrintf("CafeGLSL: Failed to find GLSL_Init export");
-            allFunctionsLoaded = false;
+        
+        // Get function pointers from RPL
+        bool allSymbolsFound = true;
+        
+        if (OSDynLoad_FindExport(s_rplHandle, OS_DYNLOAD_EXPORT_FUNC, "InitGLSLCompiler", (void**)&rpl_InitGLSLCompiler) != OS_DYNLOAD_OK) {
+            WHBLogPrintf("CafeGLSL: Failed to find InitGLSLCompiler");
+            allSymbolsFound = false;
         }
-
-        if (OSDynLoad_FindExport(s_compilerModule, (OSDynLoad_ExportType)0, "GLSL_CompileVertexShader", (void**)&s_compileVertexShader) != OS_DYNLOAD_OK)
-        {
-            WHBLogPrintf("CafeGLSL: Failed to find GLSL_CompileVertexShader export");
-            allFunctionsLoaded = false;
+        
+        if (OSDynLoad_FindExport(s_rplHandle, OS_DYNLOAD_EXPORT_FUNC, "DestroyGLSLCompiler", (void**)&rpl_DestroyGLSLCompiler) != OS_DYNLOAD_OK) {
+            WHBLogPrintf("CafeGLSL: Failed to find DestroyGLSLCompiler");
+            allSymbolsFound = false;
         }
-
-        if (OSDynLoad_FindExport(s_compilerModule, (OSDynLoad_ExportType)0, "GLSL_CompilePixelShader", (void**)&s_compilePixelShader) != OS_DYNLOAD_OK)
-        {
-            WHBLogPrintf("CafeGLSL: Failed to find GLSL_CompilePixelShader export");
-            allFunctionsLoaded = false;
+        
+        if (OSDynLoad_FindExport(s_rplHandle, OS_DYNLOAD_EXPORT_FUNC, "CompileVertexShader", (void**)&rpl_CompileVertexShader) != OS_DYNLOAD_OK) {
+            WHBLogPrintf("CafeGLSL: Failed to find CompileVertexShader");
+            allSymbolsFound = false;
         }
-
-        if (OSDynLoad_FindExport(s_compilerModule, (OSDynLoad_ExportType)0, "GLSL_FreeVertexShader", (void**)&s_freeVertexShader) != OS_DYNLOAD_OK)
-        {
-            WHBLogPrintf("CafeGLSL: Failed to find GLSL_FreeVertexShader export");
-            allFunctionsLoaded = false;
+        
+        if (OSDynLoad_FindExport(s_rplHandle, OS_DYNLOAD_EXPORT_FUNC, "CompilePixelShader", (void**)&rpl_CompilePixelShader) != OS_DYNLOAD_OK) {
+            WHBLogPrintf("CafeGLSL: Failed to find CompilePixelShader");
+            allSymbolsFound = false;
         }
-
-        if (OSDynLoad_FindExport(s_compilerModule, (OSDynLoad_ExportType)0, "GLSL_FreePixelShader", (void**)&s_freePixelShader) != OS_DYNLOAD_OK)
-        {
-            WHBLogPrintf("CafeGLSL: Failed to find GLSL_FreePixelShader export");
-            allFunctionsLoaded = false;
+        
+        if (OSDynLoad_FindExport(s_rplHandle, OS_DYNLOAD_EXPORT_FUNC, "FreeVertexShader", (void**)&rpl_FreeVertexShader) != OS_DYNLOAD_OK) {
+            WHBLogPrintf("CafeGLSL: Failed to find FreeVertexShader");
+            allSymbolsFound = false;
         }
-
-        if (OSDynLoad_FindExport(s_compilerModule, (OSDynLoad_ExportType)0, "GLSL_Destroy", (void**)&s_destroyCompiler) != OS_DYNLOAD_OK)
-        {
-            WHBLogPrintf("CafeGLSL: Failed to find GLSL_Destroy export");
-            allFunctionsLoaded = false;
+        
+        if (OSDynLoad_FindExport(s_rplHandle, OS_DYNLOAD_EXPORT_FUNC, "FreePixelShader", (void**)&rpl_FreePixelShader) != OS_DYNLOAD_OK) {
+            WHBLogPrintf("CafeGLSL: Failed to find FreePixelShader");
+            allSymbolsFound = false;
         }
-
-        if (!allFunctionsLoaded)
-        {
-            WHBLogPrintf("CafeGLSL: Not all required functions found, disabling CafeGLSL support");
-            OSDynLoad_Release(s_compilerModule);
-            s_compilerModule = nullptr;
+        
+        if (!allSymbolsFound) {
+            FILE* debugFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
+            if (debugFile) {
+                fprintf(debugFile, "[CafeGLSL] Not all RPL symbols found\n");
+                fflush(debugFile);
+                fclose(debugFile);
+            }
+            
+            OSDynLoad_Release(s_rplHandle);
+            s_rplHandle = 0;
             s_available = false;
             return false;
         }
-
+        
         // Initialize the compiler
-        if (s_initCompiler)
-        {
-            s_initCompiler();
+        if (rpl_InitGLSLCompiler) {
+            rpl_InitGLSLCompiler();
+            
+            FILE* debugFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
+            if (debugFile) {
+                fprintf(debugFile, "[CafeGLSL] RPL compiler initialized successfully\n");
+                fflush(debugFile);
+                fclose(debugFile);
+            }
+            
             s_available = true;
-            WHBLogPrintf("CafeGLSL: Ready for shader compilation");
+            WHBLogPrintf("CafeGLSL: RPL compiler ready");
             return true;
         }
-        else
-        {
-            WHBLogPrintf("CafeGLSL: Failed to initialize CafeGLSL compiler");
-            return false;
-        }
+        
+        s_available = false;
+        return false;
 #else
         WHBLogPrintf("CafeGLSL: CafeGLSL not available on this platform");
+        s_available = false;
         return false;
 #endif
     }
@@ -154,17 +144,23 @@ namespace love
             return;
 
 #ifdef __WIIU__
-        if (s_destroyCompiler)
-        {
-            s_destroyCompiler();
-            WHBLogPrintf("CafeGLSL: Compiler destroyed");
+        if (rpl_DestroyGLSLCompiler) {
+            rpl_DestroyGLSLCompiler();
+            WHBLogPrintf("CafeGLSL: RPL compiler destroyed");
         }
-
-        if (s_compilerModule)
-        {
-            OSDynLoad_Release(s_compilerModule);
-            s_compilerModule = nullptr;
+        
+        if (s_rplHandle) {
+            OSDynLoad_Release(s_rplHandle);
+            s_rplHandle = 0;
         }
+        
+        // Reset function pointers
+        rpl_InitGLSLCompiler = nullptr;
+        rpl_DestroyGLSLCompiler = nullptr;
+        rpl_CompileVertexShader = nullptr;
+        rpl_CompilePixelShader = nullptr;
+        rpl_FreeVertexShader = nullptr;
+        rpl_FreePixelShader = nullptr;
 #endif
 
         s_available = false;
@@ -181,7 +177,7 @@ namespace love
 
 #ifdef __WIIU__
         char infoLog[1024] = {0};
-        GX2VertexShader* shader = s_compileVertexShader(source.c_str(), infoLog, sizeof(infoLog), 0);
+        GX2VertexShader* shader = rpl_CompileVertexShader ? rpl_CompileVertexShader(source.c_str(), infoLog, sizeof(infoLog), 0) : nullptr;
         
         if (!shader)
         {
@@ -206,7 +202,7 @@ namespace love
 
 #ifdef __WIIU__
         char infoLog[1024] = {0};
-        GX2PixelShader* shader = s_compilePixelShader(source.c_str(), infoLog, sizeof(infoLog), 0);
+        GX2PixelShader* shader = rpl_CompilePixelShader ? rpl_CompilePixelShader(source.c_str(), infoLog, sizeof(infoLog), 0) : nullptr;
         
         if (!shader)
         {
@@ -272,7 +268,92 @@ void main()
 }
         )";
     }
+    
+    void CafeGLSLCompiler::FreeVertexShader(GX2VertexShader* shader)
+    {
+        if (!s_available || !shader)
+            return;
+
+#ifdef __WIIU__
+        if (rpl_FreeVertexShader) {
+            rpl_FreeVertexShader(shader);
+            WHBLogPrintf("CafeGLSL: Vertex shader freed");
+        }
+#endif
+    }
+
+    void CafeGLSLCompiler::FreePixelShader(GX2PixelShader* shader)
+    {
+        if (!s_available || !shader)
+            return;
+
+#ifdef __WIIU__
+        if (rpl_FreePixelShader) {
+            rpl_FreePixelShader(shader);
+            WHBLogPrintf("CafeGLSL: Pixel shader freed");
+        }
+#endif
+    }
+
+    std::string CafeGLSLCompiler::ConvertLoveShaderToGLSL(const std::string& loveShaderSource)
+    {
+        // Quick fix: Block problematic CRT shader compilation temporarily
+        if (loveShaderSource.size() > 7000 && loveShaderSource.find("MY_HIGHP_OR_MEDIUMP") != std::string::npos) {
+            WHBLogPrintf("CafeGLSL: Blocking complex CRT shader compilation temporarily");
+            return "";  // Return empty to force fallback
+        }
+        
+        // Based on Love2D official implementation from Shader.cpp
+        // Use Love2D's global_syntax approach with #define macros
+        std::string glslHeader = 
+            "#version 330 core\n"
+            "#define LOVE_HIGHP_OR_MEDIUMP highp\n"
+            "#define number float\n"
+            "#define Image sampler2D\n" 
+            "#define ArrayImage sampler2DArray\n"
+            "#define CubeImage samplerCube\n"
+            "#define VolumeImage sampler3D\n"
+            "#define extern uniform\n"
+            "#define varying in\n"
+            "#define attribute in\n"
+            "#ifdef GL_ES\n"
+            "    precision mediump float;\n"
+            "#endif\n"
+            "in vec2 VaryingTexCoord;\n"
+            "in vec4 VaryingColor;\n"
+            "uniform sampler2D MainTex;\n";
+            
+        // Add Love2D's Texel function equivalent to texture()
+        std::string glslFunctions = 
+            "vec4 Texel(sampler2D s, vec2 c) { return texture(s, c); }\n"
+            "vec4 Texel(sampler2DArray s, vec3 c) { return texture(s, c); }\n"
+            "vec4 Texel(samplerCube s, vec3 c) { return texture(s, c); }\n"
+            "vec4 Texel(sampler3D s, vec3 c) { return texture(s, c); }\n";
+            
+        // Check if shader has effect() function
+        std::string shaderBody = loveShaderSource;
+        bool hasEffectFunction = shaderBody.find("vec4 effect(") != std::string::npos;
+        
+        std::string result;
+        
+        if (hasEffectFunction) {
+            // Love2D style pixel shader with effect() function
+            result = glslHeader + 
+                    "layout(location = 0) out vec4 love_PixelColor;\n" +
+                    glslFunctions + shaderBody +
+                    "\nvoid main() {\n"
+                    "    love_PixelColor = effect(VaryingColor, MainTex, VaryingTexCoord.st, gl_FragCoord.xy);\n"
+                    "}\n";
+        } else {
+            // Raw shader or other format
+            result = glslHeader + 
+                    "layout(location = 0) out vec4 love_PixelColor;\n" +
+                    glslFunctions + shaderBody;
+        }
+        
+        WHBLogPrintf("CafeGLSL: Converted Love2D shader to GLSL (size: %d, hasEffect: %s)", 
+                    (int)result.size(), hasEffectFunction ? "yes" : "no");
+        return result;
+    }
 
 } // namespace love
-
-#endif // USE_CAFEGLSL

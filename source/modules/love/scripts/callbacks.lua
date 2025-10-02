@@ -264,7 +264,7 @@ local function error_printer(msg, layer)
     
     -- Add Wii U specific logging for error_printer
     if love._console_name == "cafe" then
-        local logFile = io.open("fs:/vol/external01/simple_debug.log", "a")
+        local logFile = io.open("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a")
         if logFile then
             logFile:write("=== ERROR_PRINTER DETAILED LOG ===\n")
             logFile:write("Raw message: " .. tostring(msg) .. "\n")
@@ -280,7 +280,7 @@ local function error_printer(msg, layer)
     print(trace:gsub("\n[^\n]+$", ""))
     
     if love._console_name == "cafe" then
-        local logFile = io.open("fs:/vol/external01/simple_debug.log", "a")
+        local logFile = io.open("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a")
         if logFile then
             logFile:write("error_printer print() call completed\n")
             logFile:flush()
@@ -298,7 +298,7 @@ function love.errhand(msg)
     
     if love._console_name == "cafe" then
         -- Try primary log location
-        local logFile = io.open("fs:/vol/external01/simple_debug.log", "a")
+        local logFile = io.open("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a")
         if logFile then
             logFile:write("\n" .. string.rep("=", 80) .. "\n")
             logFile:write("CRITICAL ERROR DETECTED AT " .. tostring(os.date()) .. "\n")
@@ -333,7 +333,7 @@ function love.errhand(msg)
         
         -- If primary logging failed, try backup location
         if not logged then
-            local backupLog = io.open("fs:/vol/save/error_backup.log", "a") 
+            local backupLog = io.open("/vol/external01/wiiu/apps/balatro/error_backup.log", "a") 
             if backupLog then
                 backupLog:write("BACKUP ERROR LOG - PRIMARY FAILED\n")
                 backupLog:write("Error: " .. tostring(msg) .. "\n")
@@ -355,7 +355,7 @@ function love.errhand(msg)
     error_printer(msg, 2)
 
     if love._console_name == "cafe" then
-        local logFile = io.open("fs:/vol/external01/simple_debug.log", "a")
+        local logFile = io.open("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a")
         if logFile then
             logFile:write("error_printer() completed\n")
             logFile:write("Checking modules: window=" .. tostring(love.window ~= nil) .. 
@@ -368,7 +368,7 @@ function love.errhand(msg)
 
     if not love.window or not love.graphics or not love.event then
         if love._console_name == "cafe" then
-            local logFile = io.open("fs:/vol/external01/simple_debug.log", "a")
+            local logFile = io.open("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a")
             if logFile then
                 logFile:write("CRITICAL: Essential modules missing - cannot display error screen\n")
                 logFile:write("Window: " .. tostring(love.window ~= nil) .. "\n")
@@ -392,7 +392,7 @@ function love.errhand(msg)
     else
         -- Graphics error display failed, log this and return
         if love._console_name == "cafe" then
-            local logFile = io.open("fs:/vol/external01/simple_debug.log", "a")
+            local logFile = io.open("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a")
             if logFile then
                 logFile:write("CRITICAL: Error screen creation failed\n")
                 logFile:write("Failure reason: " .. tostring(errorScreenFunction or "unknown") .. "\n")
@@ -409,7 +409,7 @@ function love.errhand_create_error_screen(msg)
 
     if not love.graphics.isCreated() or not love.window.isOpen() then
         if love._console_name == "cafe" then
-            local logFile = io.open("fs:/vol/external01/simple_debug.log", "a")
+            local logFile = io.open("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a")
             if logFile then
                 logFile:write("Graphics not created or window not open, trying to set mode\n")
                 logFile:flush()
@@ -420,7 +420,7 @@ function love.errhand_create_error_screen(msg)
         local success, status = pcall(love.window.setMode, 800, 600)
         if not success or not status then
             if love._console_name == "cafe" then
-                local logFile = io.open("fs:/vol/external01/simple_debug.log", "a")
+                local logFile = io.open("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a")
                 if logFile then
                     logFile:write("EARLY RETURN: Failed to set window mode\n")
                     logFile:flush()
@@ -432,7 +432,7 @@ function love.errhand_create_error_screen(msg)
     end
 
     if love._console_name == "cafe" then
-        local logFile = io.open("fs:/vol/external01/simple_debug.log", "a")
+        local logFile = io.open("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a")
         if logFile then
             logFile:write("About to reset graphics and continue with error display\n")
             logFile:flush()
@@ -464,7 +464,7 @@ function love.errhand_create_error_screen(msg)
     if love._console_name == "cafe" then
         font_size = 32  -- Much larger for TV display
         
-        local logFile = io.open("fs:/vol/external01/simple_debug.log", "a")
+        local logFile = io.open("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a")
         if logFile then
             logFile:write("Using larger font size for Wii U: " .. font_size .. "\n")
             logFile:flush()
@@ -511,7 +511,7 @@ function love.errhand_create_error_screen(msg)
 
     local function draw()
         if love._console_name == "cafe" then
-            local logFile = io.open("fs:/vol/external01/simple_debug.log", "a")
+            local logFile = io.open("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a")
             if logFile then
                 logFile:write("=== ERROR SCREEN DRAW() CALLED ===\n")
                 logFile:write("Graphics active: " .. tostring(love.graphics.isActive()) .. "\n")
@@ -522,7 +522,7 @@ function love.errhand_create_error_screen(msg)
         
         if not love.graphics.isActive() then 
             if love._console_name == "cafe" then
-                local logFile = io.open("fs:/vol/external01/simple_debug.log", "a")
+                local logFile = io.open("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a")
                 if logFile then
                     logFile:write("EARLY RETURN: Graphics not active\n")
                     logFile:flush()
@@ -535,7 +535,7 @@ function love.errhand_create_error_screen(msg)
         local pos = 70
         
         if love._console_name == "cafe" then
-            local logFile = io.open("fs:/vol/external01/simple_debug.log", "a")
+            local logFile = io.open("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a")
             if logFile then
                 logFile:write("About to draw blue error screen\n")
                 logFile:write("Error text length: " .. string.len(p) .. "\n")
@@ -551,7 +551,7 @@ function love.errhand_create_error_screen(msg)
         love.graphics.present()
         
         if love._console_name == "cafe" then
-            local logFile = io.open("fs:/vol/external01/simple_debug.log", "a")
+            local logFile = io.open("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a")
             if logFile then
                 logFile:write("Blue error screen draw completed\n")
                 logFile:flush()

@@ -1,4 +1,5 @@
 #include "common/screen.hpp"
+#include "common/config.hpp" // for LOVE_UNUSED macro if needed
 
 #include "modules/graphics/wrap_Graphics.hpp"
 
@@ -19,10 +20,98 @@
 #include "modules/image/wrap_ImageData.hpp"
 
 #include <fstream>
+#include <cctype>
+#include <string>
+
+#ifdef __WIIU__
+#include <coreinit/time.h>
+#endif
+
+#ifdef USE_CAFEGLSL
+#include "common/CafeGLSL.hpp"
+#endif
+#ifdef __WIIU__
+#include "modules/filesystem/physfs/Filesystem.hpp"
+#include "modules/filesystem/FileData.hpp"
+#include "common/StrongRef.hpp"
+#include "modules/graphics/Shader.hpp"
+#endif
 
 using namespace love;
 
 #define instance() (Module::getInstance<Graphics>(Module::M_GRAPHICS))
+
+// Love2D shader conversion function
+static std::string ProcessLove2DShader(const std::string& source)
+{
+    std::string processed = source;
+    
+    // Check if this is a Love2D effect function shader
+    bool hasEffectFunction = processed.find("vec4 effect(") != std::string::npos;
+    
+    if (hasEffectFunction) {
+        // This is a Love2D effect shader - convert it to GLSL main function
+        std::string glslShader = R"(#version 150 core
+#define number float
+#define Image sampler2D
+#define ArrayImage sampler2DArray  
+#define VolumeImage sampler3D
+
+uniform sampler2D MainTex;
+uniform vec2 love_ScreenSize;
+varying vec2 VaryingTexCoord;
+varying vec4 VaryingColor;
+
+// Love2D Texel function
+vec4 Texel(sampler2D tex, vec2 coords) {
+    return texture2D(tex, coords);
+}
+
+)";
+        
+        // Add the original Love2D shader code
+        glslShader += processed;
+        
+        // Add GLSL main function that calls effect()
+        glslShader += R"(
+
+void main() {
+    gl_FragColor = effect(VaryingColor, MainTex, VaryingTexCoord, gl_FragCoord.xy);
+}
+)";
+        
+        return glslShader;
+    } else {
+        // Already GLSL or simple shader - do basic conversions
+        size_t pos = 0;
+        
+        // Convert Love2D types and functions
+        while ((pos = processed.find("number ", pos)) != std::string::npos) {
+            processed.replace(pos, 7, "float ");
+            pos += 6;
+        }
+        
+        pos = 0;
+        while ((pos = processed.find("Image ", pos)) != std::string::npos) {
+            processed.replace(pos, 6, "sampler2D ");
+            pos += 10;
+        }
+        
+        // Texel function calls
+        pos = 0;
+        while ((pos = processed.find("Texel(", pos)) != std::string::npos) {
+            processed.replace(pos, 6, "texture2D(");
+            pos += 10;
+        }
+        
+        // Add basic GLSL header if missing
+        if (processed.find("#version") == std::string::npos) {
+            processed = "#version 150 core\n" + processed;
+        }
+        
+        return processed;
+    }
+}
 
 static int luax_checkgraphicscreated(lua_State* L)
 {
@@ -40,29 +129,15 @@ static int luax_checkgraphicscreated(lua_State* L)
     return 0;
 }
 
-int Wrap_Graphics::reset(lua_State*)
+int Wrap_Graphics::reset(lua_State* L)
 {
+    (void)L; // avoid unused warning without relying on macro
     instance()->reset();
-
     return 0;
 }
 
 int Wrap_Graphics::clear(lua_State* L)
 {
-#ifdef __WIIU__
-    static int clearCallCount = 0;
-    clearCallCount++;
-    
-    if (clearCallCount <= 10 || clearCallCount % 60 == 0) // Log first 10 calls, then every 60 calls
-    {
-        FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
-        if (logFile) {
-            fprintf(logFile, "clear() called from Lua (call #%d)\n", clearCallCount);
-            fflush(logFile);
-            fclose(logFile);
-        }
-    }
-#endif
     OptionalColor color(Color(0, 0, 0, 0));
     std::vector<OptionalColor> colors {};
 
@@ -156,7 +231,7 @@ int Wrap_Graphics::present(lua_State* L)
     static int presentCount = 0;
     presentCount++;
     if (presentCount <= 5 || presentCount % 60 == 0) {
-        FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile) {
             fprintf(logFile, "present() called from Lua (#%d)\n", presentCount);
             fflush(logFile);
@@ -175,7 +250,7 @@ int Wrap_Graphics::setColor(lua_State* L)
     static int setColorCount = 0;
     setColorCount++;
     if (setColorCount <= 10 || setColorCount % 120 == 0) {
-        FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile) {
             fprintf(logFile, "setColor() called from Lua (#%d)\n", setColorCount);
             fflush(logFile);
@@ -225,7 +300,7 @@ int Wrap_Graphics::getColor(lua_State* L)
 int Wrap_Graphics::setBackgroundColor(lua_State* L)
 {
 #ifdef __WIIU__
-    FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+    FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
     if (logFile) {
         fprintf(logFile, "setBackgroundColor() called from Lua\n");
         fflush(logFile);
@@ -966,7 +1041,7 @@ static int pushNewTexture(lua_State* L, TextureBase::Slices* slices, const Textu
     StrongRef<TextureBase> texture;
 
 #ifdef __WIIU__
-    FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+    FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
     if (logFile) {
         fprintf(logFile, "pushNewTexture() called - about to create texture\n");
         fprintf(logFile, "  settings.type: %d, slices: %p\n", settings.type, slices);
@@ -979,7 +1054,7 @@ static int pushNewTexture(lua_State* L, TextureBase::Slices* slices, const Textu
     luax_catchexcept(L,
         [&]() { 
 #ifdef __WIIU__
-            FILE* logFile2 = fopen("fs:/vol/external01/simple_debug.log", "a");
+            FILE* logFile2 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
             if (logFile2) {
                 fprintf(logFile2, "pushNewTexture() - calling instance()->newTexture()\n");
                 fflush(logFile2);
@@ -988,7 +1063,7 @@ static int pushNewTexture(lua_State* L, TextureBase::Slices* slices, const Textu
 #endif
             texture.set(instance()->newTexture(settings, slices), Acquire::NO_RETAIN);
 #ifdef __WIIU__
-            FILE* logFile3 = fopen("fs:/vol/external01/simple_debug.log", "a");
+            FILE* logFile3 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
             if (logFile3) {
                 fprintf(logFile3, "pushNewTexture() - newTexture() returned: %p\n", texture.get());
                 fflush(logFile3);
@@ -998,7 +1073,7 @@ static int pushNewTexture(lua_State* L, TextureBase::Slices* slices, const Textu
         },
         [&](bool) { 
 #ifdef __WIIU__
-            FILE* logFile4 = fopen("fs:/vol/external01/simple_debug.log", "a");
+            FILE* logFile4 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
             if (logFile4) {
                 fprintf(logFile4, "pushNewTexture() - EXCEPTION occurred in newTexture()\n");
                 fflush(logFile4);
@@ -1011,7 +1086,7 @@ static int pushNewTexture(lua_State* L, TextureBase::Slices* slices, const Textu
     // clang-format on
 
 #ifdef __WIIU__
-    FILE* logFile5 = fopen("fs:/vol/external01/simple_debug.log", "a");
+    FILE* logFile5 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
     if (logFile5) {
         fprintf(logFile5, "pushNewTexture() - about to push texture to Lua stack\n");
         fprintf(logFile5, "pushNewTexture() - texture.get() = %p\n", texture.get());
@@ -1027,7 +1102,7 @@ static int pushNewTexture(lua_State* L, TextureBase::Slices* slices, const Textu
 
     if (texture.get() == nullptr) {
 #ifdef __WIIU__
-        FILE* logFile6 = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile6 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile6) {
             fprintf(logFile6, "pushNewTexture() - returning luaL_error due to NULL texture\n");
             fflush(logFile6);
@@ -1040,7 +1115,7 @@ static int pushNewTexture(lua_State* L, TextureBase::Slices* slices, const Textu
     luax_pushtype(L, texture);
     
 #ifdef __WIIU__
-    FILE* logFile7 = fopen("fs:/vol/external01/simple_debug.log", "a");
+    FILE* logFile7 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
     if (logFile7) {
         fprintf(logFile7, "pushNewTexture() - texture successfully pushed to Lua stack\n");
         fflush(logFile7);
@@ -1054,7 +1129,7 @@ static int pushNewTexture(lua_State* L, TextureBase::Slices* slices, const Textu
 int Wrap_Graphics::newTexture(lua_State* L)
 {
 #ifdef __WIIU__
-    FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+    FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
     if (logFile) {
         fprintf(logFile, "newTexture() called from Lua with %d arguments\n", lua_gettop(L));
         if (lua_gettop(L) > 0) {
@@ -1307,7 +1382,7 @@ int Wrap_Graphics::draw(lua_State* L)
     static int drawCount = 0;
     drawCount++;
     if (drawCount <= 10 || drawCount % 120 == 0) {
-        FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile) {
             fprintf(logFile, "draw() called from Lua (#%d)\n", drawCount);
             fflush(logFile);
@@ -1349,7 +1424,7 @@ int Wrap_Graphics::setFont(lua_State* L)
     auto* font = luax_checktype<FontBase>(L, 1);
     
 #ifdef __WIIU__
-    FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+    FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
     if (logFile) {
         fprintf(logFile, "setFont() called with font: %p\n", font);
         fflush(logFile);
@@ -1370,7 +1445,7 @@ int Wrap_Graphics::getFont(lua_State* L)
     luax_catchexcept(L, [&]() { font = instance()->getFont(); });
 
 #ifdef __WIIU__
-    FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+    FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
     if (logFile) {
         fprintf(logFile, "getFont() called: returning font=%p\n", font);
         fflush(logFile);
@@ -1538,7 +1613,7 @@ int Wrap_Graphics::newFont(lua_State* L)
     luax_checkgraphicscreated(L);
 
 #ifdef __WIIU__
-    FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+    FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
     if (logFile) {
         fprintf(logFile, "newFont() called from Lua with %d arguments\n", lua_gettop(L));
         for (int i = 1; i <= lua_gettop(L); i++) {
@@ -1557,7 +1632,7 @@ int Wrap_Graphics::newFont(lua_State* L)
     FontBase* font = nullptr;
 
 #ifdef __WIIU__
-    FILE* logFile_step1 = fopen("fs:/vol/external01/simple_debug.log", "a");
+    FILE* logFile_step1 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
     if (logFile_step1) {
         fprintf(logFile_step1, "newFont() - checking if need to create rasterizer\n");
         fflush(logFile_step1);
@@ -1568,7 +1643,7 @@ int Wrap_Graphics::newFont(lua_State* L)
     if (!luax_istype(L, 1, Rasterizer::type))
     {
 #ifdef __WIIU__
-        FILE* logFile_rast = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile_rast = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile_rast) {
             fprintf(logFile_rast, "newFont() - creating rasterizer from arguments\n");
             fflush(logFile_rast);
@@ -1582,7 +1657,7 @@ int Wrap_Graphics::newFont(lua_State* L)
 
         luax_convobj(L, indices, "font", "newRasterizer");
 #ifdef __WIIU__
-        FILE* logFile_rast2 = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile_rast2 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile_rast2) {
             fprintf(logFile_rast2, "newFont() - rasterizer created successfully\n");
             fflush(logFile_rast2);
@@ -1592,7 +1667,7 @@ int Wrap_Graphics::newFont(lua_State* L)
     }
 
 #ifdef __WIIU__
-    FILE* logFile_check = fopen("fs:/vol/external01/simple_debug.log", "a");
+    FILE* logFile_check = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
     if (logFile_check) {
         fprintf(logFile_check, "newFont() - about to get rasterizer from Lua stack\n");
         fflush(logFile_check);
@@ -1603,7 +1678,7 @@ int Wrap_Graphics::newFont(lua_State* L)
     auto* rasterizer = luax_checktype<Rasterizer>(L, 1);
 
 #ifdef __WIIU__
-    FILE* logFile_rast_ptr = fopen("fs:/vol/external01/simple_debug.log", "a");
+    FILE* logFile_rast_ptr = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
     if (logFile_rast_ptr) {
         fprintf(logFile_rast_ptr, "newFont() - got rasterizer: %p\n", rasterizer);
         fflush(logFile_rast_ptr);
@@ -1614,7 +1689,7 @@ int Wrap_Graphics::newFont(lua_State* L)
     luax_catchexcept(L, [&]() { font = instance()->newFont(rasterizer); });
 
 #ifdef __WIIU__
-    FILE* logFile2 = fopen("fs:/vol/external01/simple_debug.log", "a");
+    FILE* logFile2 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
     if (logFile2) {
         fprintf(logFile2, "newFont() created font: %p\n", font);
         fflush(logFile2);
@@ -1623,7 +1698,7 @@ int Wrap_Graphics::newFont(lua_State* L)
 #endif
 
 #ifdef __WIIU__
-    FILE* logFile_push = fopen("fs:/vol/external01/simple_debug.log", "a");
+    FILE* logFile_push = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
     if (logFile_push) {
         fprintf(logFile_push, "newFont() - about to push font to Lua stack\n");
         fflush(logFile_push);
@@ -1634,7 +1709,7 @@ int Wrap_Graphics::newFont(lua_State* L)
     luax_pushtype(L, font);
 
 #ifdef __WIIU__
-    FILE* logFile_release = fopen("fs:/vol/external01/simple_debug.log", "a");
+    FILE* logFile_release = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
     if (logFile_release) {
         fprintf(logFile_release, "newFont() - about to release font\n");
         fflush(logFile_release);
@@ -1645,7 +1720,7 @@ int Wrap_Graphics::newFont(lua_State* L)
     font->release();
 
 #ifdef __WIIU__
-    FILE* logFile_end = fopen("fs:/vol/external01/simple_debug.log", "a");
+    FILE* logFile_end = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
     if (logFile_end) {
         fprintf(logFile_end, "newFont() - completed successfully\n");
         fflush(logFile_end);
@@ -1662,7 +1737,7 @@ int Wrap_Graphics::print(lua_State* L)
     static int printCount = 0;
     printCount++;
     if (printCount <= 5 || printCount % 60 == 0) {
-        FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile) {
             fprintf(logFile, "print() called from Lua (#%d)\n", printCount);
             fflush(logFile);
@@ -1678,7 +1753,7 @@ int Wrap_Graphics::print(lua_State* L)
     printDetailCount++;
     
     // Enhanced logging for error handler debugging
-    FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+    FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
     if (logFile) {
         bool shouldLog = false;
         
@@ -1749,7 +1824,7 @@ int Wrap_Graphics::print(lua_State* L)
     {
         auto* font = luax_checkfont(L, 2);
 #ifdef __WIIU__
-        FILE* logFile2 = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile2 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile2) {
             fprintf(logFile2, "print() using explicit font: %p\n", font);
             fflush(logFile2);
@@ -1763,7 +1838,7 @@ int Wrap_Graphics::print(lua_State* L)
     else
     {
 #ifdef __WIIU__
-        FILE* logFile2 = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile2 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile2) {
             FontBase* defaultFont = nullptr;
             try {
@@ -1935,7 +2010,7 @@ int Wrap_Graphics::rectangle(lua_State* L)
     static int rectCount = 0;
     rectCount++;
     if (rectCount <= 5 || rectCount % 60 == 0) {
-        FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile) {
             fprintf(logFile, "rectangle() called from Lua (#%d)\n", rectCount);
             fflush(logFile);
@@ -1958,7 +2033,7 @@ int Wrap_Graphics::rectangle(lua_State* L)
     static int rectDetailCount = 0;
     rectDetailCount++;
     if (rectDetailCount <= 3) {
-        FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+        FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
         if (logFile) {
             fprintf(logFile, "rectangle() details (#%d): mode='%s', x=%.1f, y=%.1f, w=%.1f, h=%.1f\n", 
                    rectDetailCount, name, x, y, w, h);
@@ -2276,7 +2351,7 @@ int Wrap_Graphics::getScreens(lua_State* L)
 int Wrap_Graphics::getActiveScreen(lua_State* L)
 {
 #ifdef __WIIU__
-    FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+    FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
     if (logFile) {
         fprintf(logFile, "getActiveScreen() called from Lua\n");
         fflush(logFile);
@@ -2287,7 +2362,7 @@ int Wrap_Graphics::getActiveScreen(lua_State* L)
     auto& info = love::getScreenInfo(love::currentScreen);
     
 #ifdef __WIIU__
-    FILE* logFile2 = fopen("fs:/vol/external01/simple_debug.log", "a");
+    FILE* logFile2 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
     if (logFile2) {
         fprintf(logFile2, "getActiveScreen() - current screen: %d ('%.*s')\n", 
                love::currentScreen, (int)info.name.size(), info.name.data());
@@ -2304,7 +2379,7 @@ int Wrap_Graphics::getActiveScreen(lua_State* L)
 int Wrap_Graphics::setActiveScreen(lua_State* L)
 {
 #ifdef __WIIU__
-    FILE* logFile = fopen("fs:/vol/external01/simple_debug.log", "a");
+    FILE* logFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
     if (logFile) {
         fprintf(logFile, "setActiveScreen() called from Lua\n");
         fflush(logFile);
@@ -2319,7 +2394,7 @@ int Wrap_Graphics::setActiveScreen(lua_State* L)
         return luaL_error(L, "Invalid screen '%s'", name.c_str());
 
 #ifdef __WIIU__
-    FILE* logFile2 = fopen("fs:/vol/external01/simple_debug.log", "a");
+    FILE* logFile2 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
     if (logFile2) {
         fprintf(logFile2, "setActiveScreen() - setting screen '%s' to: %d\n", name.c_str(), value);
         fflush(logFile2);
@@ -2331,7 +2406,7 @@ int Wrap_Graphics::setActiveScreen(lua_State* L)
     instance()->setActiveScreen();
 
 #ifdef __WIIU__
-    FILE* logFile3 = fopen("fs:/vol/external01/simple_debug.log", "a");
+    FILE* logFile3 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
     if (logFile3) {
         fprintf(logFile3, "setActiveScreen() completed\n");
         fflush(logFile3);
@@ -2532,23 +2607,53 @@ static constexpr lua_CFunction types[] =
 
 int Wrap_Graphics::open(lua_State* L)
 {
-    auto* instance = instance();
-    if (instance == nullptr)
-        luax_catchexcept(L, [&]() { instance = new Graphics(); });
+    auto* gfx = instance();
+#ifdef __WIIU__
+    uint64_t startTicks = OSGetSystemTime();
+    {
+        FILE* f = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log","a");
+        if (f) { fprintf(f, "[WRAP_GFX] open ENTER (existing=%s)\n", gfx?"yes":"no"); fflush(f); fclose(f);}    
+    }
+#endif
+    if (gfx == nullptr)
+    {
+#ifdef __WIIU__
+        FILE* f = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log","a");
+        if (f) { fprintf(f, "[WRAP_GFX] constructing Graphics...\n"); fflush(f); fclose(f);}    
+#endif
+        luax_catchexcept(L, [&]() { gfx = new Graphics(); });
+#ifdef __WIIU__
+        {
+            FILE* f2 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log","a");
+            if (f2) { fprintf(f2, "[WRAP_GFX] Graphics constructed (%p)\n", (void*)gfx); fflush(f2); fclose(f2);}    
+        }
+#endif
+    }
     else
-        instance->retain();
-
-
+        gfx->retain();
 
     WrappedModule module {};
-    module.instance          = instance;
+    module.instance          = gfx;
     module.name              = "graphics";
     module.type              = &Module::type;
     module.functions         = functions;
     module.platformFunctions = platformFunctions;
     module.types             = types;
 
-    return luax_register_module(L, module);
+#ifdef __WIIU__
+    {
+        FILE* f = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log","a");
+        if (f) { fprintf(f, "[WRAP_GFX] registering module...\n"); fflush(f); fclose(f);}    
+    }
+#endif
+    int r = luax_register_module(L, module);
+#ifdef __WIIU__
+    uint64_t endTicks = OSGetSystemTime();
+    double ms = (double)OSTicksToMilliseconds(endTicks - startTicks);
+    FILE* f = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log","a");
+    if (f) { fprintf(f, "[WRAP_GFX] open EXIT ret=%d (%.2f ms)\n", r, ms); fflush(f); fclose(f);}    
+#endif
+    return r;
 }
 
 int Wrap_Graphics::newCanvas(lua_State* L)
@@ -2764,14 +2869,75 @@ int Wrap_Graphics::getShader(lua_State* L)
 
 int Wrap_Graphics::newShader(lua_State* L)
 {
+    int argc = lua_gettop(L); // Přidání deklarace argc
     auto* graphics = instance();
     luax_checkgraphicscreated(L);
     
     std::vector<std::string> filepaths;
     ShaderBase::CompileOptions options;
-    
+
+    const std::string logPath = "/vol/external01/wiiu/apps/balatro/simple_debug.log";
+
+#if defined(__WIIU__) && defined(USE_CAFEGLSL)
+    auto logMessage = [&](const std::string& msg) {
+        std::ofstream log(logPath, std::ios::app);
+        if (log.is_open())
+        {
+            log << msg << std::endl;
+            log.close();
+        }
+    };
+
+    auto tryCompileLoveShader = [&](const std::string& pixelSource,
+                                    const std::string* vertexSource,
+                                    const std::string& label) -> ShaderBase* {
+        if (!love::CafeGLSLCompiler::IsAvailable())
+        {
+            logMessage("[DEBUG] CafeGLSL unavailable; cannot runtime compile " + label);
+            return nullptr;
+        }
+
+        std::string vsSource = vertexSource && !vertexSource->empty() ? *vertexSource : love::CafeGLSLCompiler::GetDefaultVertexShaderSource();
+        std::string psSource = love::CafeGLSLCompiler::ConvertLoveShaderToGLSL(pixelSource);
+
+        logMessage("[DEBUG] Converted Love shader to GLSL for " + label);
+
+        GX2VertexShader* vs = love::CafeGLSLCompiler::CompileVertexShader(vsSource);
+        if (!vs)
+        {
+            logMessage("[DEBUG] Vertex shader compilation failed for " + label);
+            return nullptr;
+        }
+
+        GX2PixelShader* ps = love::CafeGLSLCompiler::CompilePixelShader(psSource);
+        if (!ps)
+        {
+            logMessage("[DEBUG] Pixel shader compilation failed for " + label);
+            love::CafeGLSLCompiler::FreeVertexShader(vs);
+            return nullptr;
+        }
+
+        WHBGfxShaderGroup group{};
+        group.vertexShader = vs;
+        group.pixelShader = ps;
+
+        try
+        {
+            love::Shader* sh = new love::Shader(group, options);
+            logMessage("[DEBUG] Runtime shader compilation succeeded for " + label);
+            return sh;
+        }
+        catch (const std::exception& e)
+        {
+            logMessage(std::string("[DEBUG] Failed to create Shader from runtime group for ") + label + ": " + e.what());
+            love::CafeGLSLCompiler::FreeVertexShader(vs);
+            love::CafeGLSLCompiler::FreePixelShader(ps);
+            return nullptr;
+        }
+    };
+#endif
+
     // Debug: Log shader creation at Lua wrapper level
-    const std::string logPath = "/vol/content/simple_debug.log";
     std::ofstream debugFile(logPath, std::ios::app);
     if (debugFile.is_open())
     {
@@ -2796,7 +2962,7 @@ int Wrap_Graphics::newShader(lua_State* L)
             debugFile2.close();
         }
         
-        if (lua_gettop(L) >= 2 && lua_type(L, 2) == LUA_TSTRING)
+    if (lua_gettop(L) >= 2 && lua_type(L, 2) == LUA_TSTRING)
         {
             // Two strings: vertex and fragment code/files
             const char* code2 = luaL_checkstring(L, 2);
@@ -2816,32 +2982,329 @@ int Wrap_Graphics::newShader(lua_State* L)
             // Single string: combined shader code/file
             filepaths.push_back(std::string(code1));
         }
+
+        // Check if the provided string looks like GLSL source (not a path)
+        // On Wii U without CafeGLSL, we'll return a dummy shader instead of crashing
+        auto looksLikeGLSL = [](const std::string& s) {
+            if (s.find("\n") != std::string::npos) return true;
+            if (s.find("void main") != std::string::npos) return true;
+            if (s.find("vec4 effect") != std::string::npos) return true; // LÖVE2D shaders
+            if (s.find("extern") != std::string::npos) return true; // LÖVE2D uniforms
+            if (s.find("uniform") != std::string::npos) return true;
+            if (s.find("sampler") != std::string::npos) return true;
+            // crude: paths usually have a dot and a slash
+            bool hasSlash = (s.find('/') != std::string::npos) || (s.find('\\') != std::string::npos);
+            bool hasDot = (s.find('.') != std::string::npos);
+            return !hasSlash && !hasDot; // bare code string
+        };
+        if (looksLikeGLSL(filepaths[0]))
+        {
+#if defined(__WIIU__) && defined(USE_CAFEGLSL)
+            logMessage("[DEBUG] Detected inline shader source; attempting CafeGLSL runtime compile");
+
+            std::string pixelSource = std::string(lua_tostring(L, 1));
+            std::string vertexSource;
+            bool hasVertexSource = false;
+            if (lua_gettop(L) >= 2 && lua_type(L, 2) == LUA_TSTRING)
+            {
+                vertexSource = std::string(lua_tostring(L, 2));
+                hasVertexSource = true;
+            }
+
+            if (ShaderBase* runtimeShader = tryCompileLoveShader(pixelSource, hasVertexSource ? &vertexSource : nullptr, "inline source"))
+            {
+                luax_pushtype(L, runtimeShader);
+                runtimeShader->release();
+                return 1;
+            }
+#endif
+        }
     }
     else
     {
         return luaL_error(L, "newShader expects string arguments");
     }
     
+#if defined(__WIIU__) && defined(USE_CAFEGLSL)
+    auto endsWithIgnoreCase = [](const std::string& str, const std::string& suffix) {
+        if (suffix.size() > str.size())
+            return false;
+        for (size_t i = 0; i < suffix.size(); ++i)
+        {
+            char a = (char)tolower((unsigned char)str[str.size() - suffix.size() + i]);
+            char b = (char)tolower((unsigned char)suffix[i]);
+            if (a != b)
+                return false;
+        }
+        return true;
+    };
+
+    // Attempt runtime compilation when a Love2D-style shader file is provided.
+    if (!filepaths.empty())
+    {
+        const std::string& primary = filepaths[0];
+        if (endsWithIgnoreCase(primary, ".fs") || endsWithIgnoreCase(primary, ".frag"))
+        {
+            love::Filesystem* fs = Module::getInstance<love::Filesystem>(Module::M_FILESYSTEM);
+            if (fs && fs->exists(primary.c_str()))
+            {
+                StrongRef<love::FileData> file(fs->read(primary));
+                if (file.get() != nullptr)
+                {
+                    std::string pixelSource(static_cast<const char*>(file->getData()), file->getSize());
+                    std::string vertexSource;
+                    bool hasVertexSource = false;
+                    if (filepaths.size() >= 2 && endsWithIgnoreCase(filepaths[1], ".vs"))
+                    {
+                        StrongRef<love::FileData> vsFile(fs->read(filepaths[1]));
+                        if (vsFile.get() != nullptr)
+                        {
+                            vertexSource = std::string(static_cast<const char*>(vsFile->getData()), vsFile->getSize());
+                            hasVertexSource = true;
+                        }
+                    }
+
+                    if (ShaderBase* runtimeShader = tryCompileLoveShader(pixelSource, hasVertexSource ? &vertexSource : nullptr, primary))
+                    {
+                        luax_pushtype(L, runtimeShader);
+                        runtimeShader->release();
+                        return 1;
+                    }
+                }
+                else
+                {
+                    logMessage("[DEBUG] Failed to read shader file for runtime compilation: " + primary);
+                }
+            }
+            else
+            {
+                logMessage("[DEBUG] Shader file not found for runtime compilation: " + primary);
+            }
+        }
+    }
+#endif
+
+    // Wii U: map GLSL sources (*.fs, *.frag) to precompiled GSH location
+    auto mapToGsh = [](const std::string& in) {
+        // If already a .gsh or absolute shaders path, keep as-is
+        auto lower = in;
+        for (auto& c : lower) c = (char)tolower((unsigned char)c);
+        if (lower.rfind(".gsh") != std::string::npos)
+            return in;
+        // Extract base filename without extension
+        size_t slash = in.find_last_of("/\\");
+        std::string name = (slash == std::string::npos) ? in : in.substr(slash + 1);
+        size_t dot = name.find_last_of('.');
+        if (dot != std::string::npos)
+            name = name.substr(0, dot);
+        return std::string("/vol/content/shaders/") + name + ".gsh";
+    };
+
+    std::vector<std::string> mappedPaths;
+    mappedPaths.reserve(filepaths.size());
+    if (!filepaths.empty())
+    {
+        if (filepaths.size() == 1)
+        {
+            std::string g = mapToGsh(filepaths[0]);
+            mappedPaths.push_back(g); // Wii U GSH holds both stages
+        }
+        else
+        {
+            // Map both to the same .gsh (vertex+pixel extracted by loader)
+            std::string g = mapToGsh(filepaths[0]);
+            mappedPaths.push_back(g);
+            mappedPaths.push_back(g);
+        }
+    }
+
     ShaderBase* shader = nullptr;
-    luax_catchexcept(L, [&]() {
-        std::ofstream debugFile4(logPath, std::ios::app);
-        if (debugFile4.is_open())
+
+    // Early existence check for mapped .gsh to avoid throwing repeatedly on Wii U
+    auto allPathsExist = [](const std::vector<std::string>& paths) -> bool {
+        if (paths.empty()) return false;
+        for (const auto& p : paths)
         {
-            debugFile4 << "[DEBUG] Wrap_Graphics::newShader() - About to call graphics->newShader() with " << filepaths.size() << " file paths" << std::endl;
-            debugFile4.close();
+            FILE* f = fopen(p.c_str(), "rb");
+            if (!f) return false;
+            fclose(f);
+        }
+        return true;
+    };
+
+    bool triedPrimary = false;
+    try
+    {
+        // Try custom/effect shader only if files exist, else skip to fallback
+        {
+            std::ofstream debugFile4(logPath, std::ios::app);
+            if (debugFile4.is_open())
+            {
+                debugFile4 << "[DEBUG] Wrap_Graphics::newShader() - Attempting graphics->newShader() with " << mappedPaths.size() << " mapped paths" << std::endl;
+                for (size_t i = 0; i < mappedPaths.size(); ++i)
+                    debugFile4 << "  mapped[" << i << "]: " << mappedPaths[i] << std::endl;
+                debugFile4.close();
+            }
+        }
+        const auto& primary = mappedPaths.empty() ? filepaths : mappedPaths;
+        if (allPathsExist(primary))
+        {
+            triedPrimary = true;
+            shader = graphics->newShader(primary, options);
+        }
+    }
+    catch (const std::exception& e)
+    {
+        // Try Love2D shader conversion instead of basic texture fallback
+        {
+            std::ofstream debugFileF(logPath, std::ios::app);
+            if (debugFileF.is_open())
+            {
+                debugFileF << "[DEBUG] Wrap_Graphics::newShader() - Primary shader " << (triedPrimary ? "failed" : "skipped (missing files)") << ": " << e.what() << std::endl;
+                debugFileF << "[DEBUG] Wrap_Graphics::newShader() - Attempting Love2D shader conversion instead of fallback" << std::endl;
+                debugFileF.close();
+            }
+        }
+
+        // Try to create a compatible Love2D shader using string source conversion
+        if (argc >= 1 && lua_isstring(L, 1))
+        {
+            const char* sourceCode = lua_tostring(L, 1);
+            
+            // Convert Love2D shader source to GLSL
+#ifdef USE_CAFEGLSL
+            // Use CafeGLSL for Love2D → GLSL conversion and GX2 compilation
+            std::string convertedGLSL = CafeGLSLCompiler::ConvertLoveShaderToGLSL(std::string(sourceCode));
+#else
+            // Use our fallback Love2D → GLSL converter
+            std::string convertedGLSL = ProcessLove2DShader(std::string(sourceCode));
+#endif
+            if (!convertedGLSL.empty()) {
+                {
+                    std::ofstream debugFileC(logPath, std::ios::app);
+                    if (debugFileC.is_open())
+                    {
+                        debugFileC << "[DEBUG] Wrap_Graphics::newShader() - Love2D conversion produced " << convertedGLSL.size() << " bytes of GLSL" << std::endl;
+                        debugFileC.close();
+                    }
+                }
+                
+                // Try creating shader with converted GLSL - this would need implementation
+                // For now, fall back to basic texture shader
+            }
+            
+            // If conversion failed or not available, use basic fallback
+            const char* fallback = "/vol/content/shaders/texture.gsh";
+            std::vector<std::string> fb = { fallback, fallback };
+            
+            try
+            {
+                shader = graphics->newShader(fb, options);
+            }
+            catch (const std::exception& e2)
+            {
+                return luaL_error(L, "Failed to create shader: %s (Love2D conversion and fallback both failed: %s)", e.what(), e2.what());
+            }
+        }
+        else
+        {
+            // No string source to convert, use basic fallback
+            const char* fallback = "/vol/content/shaders/texture.gsh";
+            std::vector<std::string> fb = { fallback, fallback };
+            
+            try
+            {
+                shader = graphics->newShader(fb, options);
+            }
+            catch (const std::exception& e2)
+            {
+                return luaL_error(L, "Failed to create shader: %s (fallback failed: %s)", e.what(), e2.what());
+            }
+        }
+    }
+
+    // If primary path was missing (no exception thrown) try Love2D conversion
+    if (shader == nullptr)
+    {
+        {
+            std::ofstream debugFileF2(logPath, std::ios::app);
+            if (debugFileF2.is_open())
+            {
+                debugFileF2 << "[DEBUG] Wrap_Graphics::newShader() - Primary shader not created (likely missing files). Trying Love2D conversion instead of basic fallback" << std::endl;
+                debugFileF2.close();
+            }
+        }
+
+        // Try Love2D shader conversion if we have string source
+        bool conversionAttempted = false;
+        if (argc >= 1 && lua_isstring(L, 1))
+        {
+            const char* sourceCode = lua_tostring(L, 1);
+            
+            // Convert Love2D shader source to GLSL
+#ifdef USE_CAFEGLSL
+            // Use CafeGLSL for Love2D → GLSL conversion and GX2 compilation
+            std::string convertedGLSL = CafeGLSLCompiler::ConvertLoveShaderToGLSL(std::string(sourceCode));
+#else
+            // Use our fallback Love2D → GLSL converter
+            std::string convertedGLSL = ProcessLove2DShader(std::string(sourceCode));
+#endif
+            if (!convertedGLSL.empty()) {
+                conversionAttempted = true;
+                {
+                    std::ofstream debugFileC2(logPath, std::ios::app);
+                    if (debugFileC2.is_open())
+                    {
+                        debugFileC2 << "[DEBUG] Wrap_Graphics::newShader() - Love2D conversion #2 produced " << convertedGLSL.size() << " bytes of GLSL" << std::endl;
+                        debugFileC2.close();
+                    }
+                }
+                // Conversion successful but we still need implementation for GLSL compilation
+            }
         }
         
-        shader = graphics->newShader(filepaths, options);
-        
-        std::ofstream debugFile5(logPath, std::ios::app);
-        if (debugFile5.is_open())
+        // If conversion not possible or failed, use basic texture fallback as last resort
+        if (!conversionAttempted)
         {
-            debugFile5 << "[DEBUG] Wrap_Graphics::newShader() - graphics->newShader() returned shader pointer: " << (void*)shader << std::endl;
-            debugFile5.close();
+            const char* fallback = "/vol/content/shaders/texture.gsh";
+            std::vector<std::string> fb = { fallback, fallback };
+            
+            try
+            {
+                shader = graphics->newShader(fb, options);
+            }
+            catch (const std::exception& e3)
+            {
+                return luaL_error(L, "Failed to create shader: primary missing; Love2D conversion unavailable; basic fallback failed: %s", e3.what());
+            }
         }
-    });
-    
+        else
+        {
+            // For now, still use fallback even after conversion until we implement GLSL compilation
+            const char* fallback = "/vol/content/shaders/texture.gsh";
+            std::vector<std::string> fb = { fallback, fallback };
+            
+            try
+            {
+                shader = graphics->newShader(fb, options);
+            }
+            catch (const std::exception& e3)
+            {
+                return luaL_error(L, "Failed to create shader: Love2D conversion completed but GLSL compilation not implemented; fallback failed: %s", e3.what());
+            }
+        }
+    }
+
+    // Push shader userdata back to Lua
     luax_pushtype(L, shader);
+    {
+        std::ofstream debugFileEnd(logPath, std::ios::app);
+        if (debugFileEnd.is_open())
+        {
+            debugFileEnd << "[DEBUG] Wrap_Graphics::newShader() - returning shader userdata for ptr=" << shader << std::endl;
+            debugFileEnd.close();
+        }
+    }
     shader->release();
     
     return 1;

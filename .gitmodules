@@ -1,3 +1,6 @@
 [submodule "tests"]
 	path = tests
 	url = https://github.com/lovebrew/love-test.git
+[submodule "libs/CafeGLSL"]
+	path = libs/CafeGLSL
+	url = https://github.com/Exzap/CafeGLSL.git

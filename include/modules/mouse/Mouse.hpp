@@ -1,4 +1,16 @@
+// This header acts as a thin router: on Wii U we use the platform-specific Mouse
+// definition with extended features (touch/Wiimote). On other platforms we fall
+// back to the minimal generic Mouse implementation.
+
 #pragma once
+
+#if defined(NINTENDO_WIIU)
+
+// For Wii U builds, the platform-specific header with the same include guard
+// path (modules/mouse/Mouse.hpp) is found first via include directories.
+// This file still needs to exist for non-Wii U builds.
+
+#else
 
 #include "common/Module.hpp"
 
@@ -9,8 +21,7 @@ namespace love
       public:
         Mouse();
 
-        virtual ~Mouse()
-        {}
+        virtual ~Mouse() {}
 
         void getPosition(double& x, double& y) const;
 
@@ -36,3 +47,5 @@ namespace love
         bool relativeMode = false;
     };
 } // namespace love
+
+#endif // NINTENDO_WIIU

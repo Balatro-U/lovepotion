@@ -10,9 +10,9 @@ namespace love
     class Mouse : public MouseBase
     {
       public:
-        Mouse();
+  Mouse();
 
-        virtual ~Mouse();
+  virtual ~Mouse() {}
 
         void getPosition(double& x, double& y) const override;
 

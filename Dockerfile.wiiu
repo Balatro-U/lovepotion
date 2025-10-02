@@ -34,18 +34,13 @@ RUN echo "=== Installing dependencies ===" && \
   #  java -jar /opt/wav2btsnd/wav2btsnd.jar /project/platform/cafe/bootSound.wav /project/platform/cafe/bootSound.btsnd; \
    # else echo "No bootSound.wav found, skipping btsnd conversion."; fi
 
-# Download and install CafeGLSL static compiler (Linux .elf)
-RUN echo "=== Installing CafeGLSL static shader compiler ===" && \
+# Download precompiled CafeGLSL since building requires special WUT fork
+RUN echo "=== Downloading precompiled CafeGLSL ===" && \
     mkdir -p /opt/CafeGLSL && \
     cd /opt/CafeGLSL && \
-    wget -O glslcompiler.elf https://github.com/Exzap/CafeGLSL/releases/download/v0.2.0/glslcompiler.elf && \
-    wget -O CafeGLSLCompiler.h https://raw.githubusercontent.com/Exzap/CafeGLSL/e3e385c700e6e70dd2d9d6cd015162991084df6b/cafecompiler/CafeGLSLCompiler.h && \
-    chmod +x glslcompiler.elf && \
-    cp glslcompiler.elf /usr/local/bin/ && \
-    cp CafeGLSLCompiler.h /opt/devkitpro/wut/include/ && \
-    echo "=== CafeGLSL static compiler installation completed ===" && \
-    ls -la && \
-    which glslcompiler.elf || echo "glslcompiler.elf not in PATH but copied to /usr/local/bin/"
+    wget -O glslcompiler.rpl https://github.com/Exzap/CafeGLSL/releases/download/v0.2.0/glslcompiler.rpl && \
+    echo "=== CafeGLSL downloaded ===" && \
+    ls -la glslcompiler.rpl
 
 WORKDIR /project
 
@@ -57,8 +52,7 @@ RUN find /project -name '*.cpp' -o -name '*.hpp' -o -name '*.c' -o -name '*.h' |
 
 # Note: Shaders (.fs files) are in Love2D format and compiled at runtime by ShaderCompiler.cpp
 # Pre-compiling them with CafeGLSL doesn't work because they use Love2D syntax (extern, effect(), etc.)
-RUN echo "=== Shader files will be compiled at runtime by the engine ===" && \
-    echo "Found Love2D shader files:" && \
+RUN echo "Found GLSL shaders:" && \
     find game/resources/shaders -name "*.fs" 2>/dev/null | while read shader; do \
         echo "  - $(basename "$shader")"; \
     done || echo "No game/resources/shaders directory found"
@@ -67,12 +61,17 @@ RUN echo "=== Shader files will be compiled at runtime by the engine ===" && \
 RUN echo "=== Cleaning old build directory ===" && \
     rm -rf build && \
     mkdir -p build && cd build && \
-    echo "=== Creating game.love from game folder ===" && \
+    echo "=== Creating game.love from game folder (without glslcompiler.rpl) ===" && \
     cd /project/game && \
     zip -r /project/build/game.love . && \
     echo "=== game.love created successfully ===" && \
     ls -la /project/build/game.love && \
     cd /project/build && \
+    echo "=== Adding CafeGLSL runtime library ONLY to content folder ===" && \
+    mkdir -p /project/platform/cafe/content && \
+    cp /opt/CafeGLSL/glslcompiler.rpl /project/platform/cafe/content/glslcompiler.rpl && \
+    echo "=== CafeGLSL runtime library added to content (will be in .wuhb) ===" && \
+    ls -la /project/platform/cafe/content/ && \
     ls -lh /project/platform/cafe/ && \
     echo "=== Starting fresh CMake configuration ===" && \
     echo "=== Shaders will be compiled at runtime by ShaderCompiler.cpp ===" && \
@@ -117,6 +116,7 @@ RUN echo "=== Cleaning old build directory ===" && \
     cp -v lovepotion.rpx /output/ 2>/dev/null || echo "lovepotion.rpx not found" && \
     cp -v lovepotion.wuhb /output/ 2>/dev/null || echo "lovepotion.wuhb not found" && \
     cp -v game.love /output/ 2>/dev/null || echo "game.love not found" && \
+    echo "=== CafeGLSL is embedded in .wuhb, not copied separately ===" && \
     echo "=== OUTPUT DIRECTORY CONTENTS ===" && \
     ls -la /output/
 
