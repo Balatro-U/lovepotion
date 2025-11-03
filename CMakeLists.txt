@@ -354,6 +354,9 @@ include_directories(
     libraries/ddsparse
 )
 
+# Add project's source/ directory to include path so headers under source/patch are found
+target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/source)
+
 # Add luasocket include directory only for non-Wii U platforms
 if(NOT NINTENDO_WIIU)
     include_directories(libraries/luasocket)
@@ -486,6 +489,9 @@ source/modules/sound/lullaby/ModPlugDecoder.cpp
 source/modules/sound/lullaby/MP3Decoder.cpp
 source/modules/sound/lullaby/VorbisDecoder.cpp
 source/modules/sound/lullaby/WaveDecoder.cpp
+source/patch/ModManager.cpp
+source/patch/PatchEngine.cpp
+source/patch/Logger.cpp
 )
 
 # Add mouse module for non-Wii U platforms only (Wii U doesn't support mouse)
