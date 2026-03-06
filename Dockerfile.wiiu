@@ -15,6 +15,7 @@ RUN echo "=== Installing dependencies ===" && \
     ppc-libpng \
     ppc-libjpeg-turbo \
     ppc-freetype \
+    ppc-brotli \
     ppc-libogg \
     ppc-libvorbis \
     ppc-libvorbisidec \
@@ -79,10 +80,10 @@ RUN echo "=== Cleaning old build directory ===" && \
     find /project/source -name "*.cpp" | sort > /tmp/actual_files.txt && \
     echo "=== First 30 actual files found ===" && \
     head -30 /tmp/actual_files.txt && \
-    cmake .. -DNINTENDO_WIIU=ON -DUSE_CAFEGLSL=ON -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_TOOLCHAIN_FILE=$DEVKITPRO/cmake/WiiU.cmake -G "Unix Makefiles" || (echo "=== CMake failed, but continuing to show file listing ===" && cat /tmp/actual_files.txt) && \
+    cmake .. -DNINTENDO_WIIU=ON -DUSE_CAFEGLSL=ON -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_TOOLCHAIN_FILE=$DEVKITPRO/cmake/WiiU.cmake -G "Unix Makefiles" || { echo "=== CMake failed ==="; cat /tmp/actual_files.txt; exit 1; } && \
     echo "=== CMake configuration completed ===" && \
     echo "=== Starting make build ===" && \
-    make -j4 || (echo "=== Make failed, showing build directory contents ===" && ls -la && exit 1) && \
+    make -j4 || { echo "=== Make failed, showing build directory contents ==="; ls -la; exit 1; } && \
     echo "=== Make build completed ===" && \
     echo "=== BUILD OUTPUT DEBUG ===" && \
     ls -la && \
@@ -95,6 +96,7 @@ RUN echo "=== Cleaning old build directory ===" && \
         echo "=== FUSING FAILED - Missing files ==="; \
         echo "lovepotion.wuhb exists: $(test -f lovepotion.wuhb && echo yes || echo no)"; \
         echo "game.love exists: $(test -f /project/build/game.love && echo yes || echo no)"; \
+        exit 1; \
     fi && \
     echo "=== FIND ALL RPX/WUHB/ELF FILES IN PROJECT ===" && \
     find /project -name "*.rpx" -o -name "*.wuhb" -o -name "*.elf" | head -20 && \
@@ -110,13 +112,15 @@ RUN echo "=== Cleaning old build directory ===" && \
         cp -v balatro.wuhb /output/; \
     else \
         echo "balatro.wuhb not found in build directory"; \
+        exit 1; \
     fi && \
     echo "=== COPYING ALL BUILD ARTIFACTS ===" && \
     cp -v lovepotion.elf /output/ 2>/dev/null || echo "lovepotion.elf not found" && \
     cp -v lovepotion.rpx /output/ 2>/dev/null || echo "lovepotion.rpx not found" && \
     cp -v lovepotion.wuhb /output/ 2>/dev/null || echo "lovepotion.wuhb not found" && \
     cp -v game.love /output/ 2>/dev/null || echo "game.love not found" && \
-    echo "=== CafeGLSL is embedded in .wuhb, not copied separately ===" && \
+    cp -v /opt/CafeGLSL/glslcompiler.rpl /output/ 2>/dev/null || echo "glslcompiler.rpl not found" && \
+    echo "=== CafeGLSL copied both as packaged content and as sidecar fallback ===" && \
     echo "=== OUTPUT DIRECTORY CONTENTS ===" && \
     ls -la /output/
 

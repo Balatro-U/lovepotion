@@ -76,6 +76,8 @@ target_compile_options(${PROJECT_NAME} PRIVATE
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+find_package(PkgConfig REQUIRED)
+
 if (NINTENDO_WIIU)
     add_subdirectory(platform/cafe)
 
@@ -135,7 +137,16 @@ if (NINTENDO_WIIU)
     )
 
     find_package(Freetype REQUIRED)
-    target_link_libraries(${PROJECT_NAME} PRIVATE Freetype::Freetype bz2 png turbojpeg ddsparse)
+
+    target_link_libraries(${PROJECT_NAME} PRIVATE
+        Freetype::Freetype
+        bz2
+        png
+        turbojpeg
+        ddsparse
+        brotlidec
+        brotlicommon
+    )
 
     # Apply luasocket patch only if luasocket will be built (not on Wii U)
     if(NOT NINTENDO_WIIU)
@@ -150,9 +161,6 @@ endif()
 #     COMMAND           ${CMAKE_COMMAND} -E cat "${CMAKE_CURRENT_BINARY_DIR}/${OUTPUT_FILENAME}" "game.zip" > "${CMAKE_CURRENT_SOURCE_DIR}/${OUTPUT_FILENAME}"
 #     COMMAND           ${CMAKE_COMMAND} -E rm "game.zip"
 # )
-
-# find PkgConfig for liblz4, libmpg123
-find_package(PkgConfig REQUIRED)
 
 pkg_check_modules(liblz4 REQUIRED IMPORTED_TARGET liblz4)
 target_link_libraries(${PROJECT_NAME} PRIVATE PkgConfig::liblz4)
@@ -261,6 +269,9 @@ target_compile_definitions(lua-https PRIVATE
 # link curl
 pkg_check_modules(libcurl REQUIRED IMPORTED_TARGET libcurl)
 target_link_libraries(lua-https PRIVATE PkgConfig::lua51 PkgConfig::libcurl)
+if(NINTENDO_WIIU)
+    target_link_libraries(lua-https PRIVATE brotlidec brotlicommon)
+endif()
 
 
 add_library(love_physfs

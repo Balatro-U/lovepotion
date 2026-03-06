@@ -1,5 +1,6 @@
 #include "modules/timer/Timer.hpp"
 
+#include <cmath>
 #include <coreinit/thread.h>
 
 namespace love
@@ -8,14 +9,19 @@ namespace love
 
     Timer::Timer()
     {
-        Timer::reference    = OSGetSystemTick();
+        Timer::reference    = OSGetTime();
         this->prevFpsUpdate = this->currTime = Timer::getTime();
     }
 
     double Timer::getTime()
     {
-        const auto ns = OSTicksToNanoseconds(OSGetSystemTick() - Timer::reference);
-        return ns / Timer::SECONDS_TO_NS;
+        auto now = OSGetTime();
+
+        if (now < Timer::reference)
+            Timer::reference = now;
+
+        const auto ns = OSTicksToNanoseconds(now - Timer::reference);
+        return static_cast<double>(ns) / Timer::SECONDS_TO_NS;
     }
 
     void Timer::sleep(double seconds) const
@@ -28,12 +34,26 @@ namespace love
 
     double Timer::step()
     {
+        constexpr double MAX_FRAME_DT = 0.25;
+
         this->frames++;
 
         this->prevTime = this->currTime;
-        this->currTime = Timer::getTime();
+        double measuredTime = Timer::getTime();
+        double measuredDt   = measuredTime - this->prevTime;
 
-        this->dt = this->currTime - this->prevTime;
+        if (!std::isfinite(measuredDt) || measuredDt < 0.0)
+        {
+            measuredTime = this->prevTime;
+            measuredDt   = 0.0;
+        }
+        else if (measuredDt > MAX_FRAME_DT)
+        {
+            measuredDt = MAX_FRAME_DT;
+        }
+
+        this->currTime = measuredTime;
+        this->dt       = measuredDt;
 
         double timeSinceLast = (this->currTime - this->prevFpsUpdate);
 

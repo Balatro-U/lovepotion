@@ -50,10 +50,55 @@ namespace love
         }
 
         WHBLogPrintf("CafeGLSL: Loading glslcompiler.rpl...");
-        
-        // Load CafeGLSL RPL dynamically from content directory
-        OSDynLoad_Error result = OSDynLoad_Acquire("/vol/content/glslcompiler.rpl", &s_rplHandle);
-        if (result != OS_DYNLOAD_OK) {
+
+        const char* fileProbePaths[] = {
+            "/vol/content/glslcompiler.rpl",
+            "/vol/external01/wiiu/apps/balatro/glslcompiler.rpl",
+            "glslcompiler.rpl",
+        };
+
+        const char* dynloadNames[] = {
+            "glslcompiler",
+            "glslcompiler.rpl",
+            "/vol/content/glslcompiler.rpl",
+            "/vol/external01/wiiu/apps/balatro/glslcompiler.rpl",
+            "glslcompiler.rpl",
+        };
+
+        OSDynLoad_Error result = OS_DYNLOAD_OK;
+        const char* loadedPath = nullptr;
+
+        for (const char* path : fileProbePaths)
+        {
+            FILE* debugFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
+            if (debugFile) {
+                FILE* probe = fopen(path, "rb");
+                fprintf(debugFile, "[CafeGLSL] Probe file path: %s => %s\n", path, probe ? "readable" : "missing");
+                if (probe)
+                    fclose(probe);
+                fflush(debugFile);
+                fclose(debugFile);
+            }
+        }
+
+        for (const char* path : dynloadNames)
+        {
+            FILE* debugFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
+            if (debugFile) {
+                fprintf(debugFile, "[CafeGLSL] Trying dynload name: %s\n", path);
+                fflush(debugFile);
+                fclose(debugFile);
+            }
+
+            result = OSDynLoad_Acquire(path, &s_rplHandle);
+            if (result == OS_DYNLOAD_OK)
+            {
+                loadedPath = path;
+                break;
+            }
+        }
+
+        if (!loadedPath || result != OS_DYNLOAD_OK) {
             FILE* debugFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
             if (debugFile) {
                 fprintf(debugFile, "[CafeGLSL] Failed to load glslcompiler.rpl, error: %d\n", result);
@@ -64,6 +109,15 @@ namespace love
             WHBLogPrintf("CafeGLSL: Failed to load glslcompiler.rpl, error: %d", result);
             s_available = false;
             return false;
+        }
+
+        {
+            FILE* debugFile = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
+            if (debugFile) {
+                fprintf(debugFile, "[CafeGLSL] Loaded glslcompiler.rpl from: %s\n", loadedPath ? loadedPath : "<unknown>");
+                fflush(debugFile);
+                fclose(debugFile);
+            }
         }
         
         // Get function pointers from RPL

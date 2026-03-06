@@ -609,11 +609,9 @@ namespace love
         }
 #endif
         
-        // Present to GamePad
-        GX2CopyColorBufferToScanBuffer(&this->targets[0].get(), GX2_SCAN_TARGET_DRC);
-
-        // Present to TV (copy same buffer)
-        GX2CopyColorBufferToScanBuffer(&this->targets[0].get(), GX2_SCAN_TARGET_TV);
+        // Present each screen using its matching framebuffer.
+        for (size_t index = 0; index < love::getScreenInfo().size(); ++index)
+            this->targets[index].copyScanBuffer();
         
         // Swap buffers for both screens
         GX2SwapScanBuffers();

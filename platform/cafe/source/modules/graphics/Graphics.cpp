@@ -218,7 +218,7 @@ namespace love
     void Graphics::setActiveScreen()
     {
         gx2.ensureInFrame();
-        // gx2.copyCurrentScanBuffer();
+        gx2.bindFramebuffer(&gx2.getInternalBackbuffer());
     }
 
     void Graphics::clear(OptionalColor color, OptionalInt stencil, OptionalDouble depth)

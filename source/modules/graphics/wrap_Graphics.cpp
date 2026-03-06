@@ -1071,16 +1071,16 @@ static int pushNewTexture(lua_State* L, TextureBase::Slices* slices, const Textu
             }
 #endif
         },
-        [&](bool) { 
+        [&](bool hadException) { 
 #ifdef __WIIU__
             FILE* logFile4 = fopen("/vol/external01/wiiu/apps/balatro/simple_debug.log", "a");
             if (logFile4) {
-                fprintf(logFile4, "pushNewTexture() - EXCEPTION occurred in newTexture()\n");
+                fprintf(logFile4, "pushNewTexture() - finally(hadException=%s)\n", hadException ? "true" : "false");
                 fflush(logFile4);
                 fclose(logFile4);
             }
 #endif
-            if (slices) slices->clear(); 
+            if (hadException && slices) slices->clear(); 
         }
     );
     // clang-format on
@@ -3084,6 +3084,26 @@ int Wrap_Graphics::newShader(lua_State* L)
     }
 #endif
 
+    auto isLikelyInlineShaderSource = [](const std::string& s) {
+        if (s.find('\n') != std::string::npos || s.find('\r') != std::string::npos)
+            return true;
+        if (s.find("#ifdef") != std::string::npos)
+            return true;
+        if (s.find("#version") != std::string::npos)
+            return true;
+        if (s.find("void main") != std::string::npos)
+            return true;
+        if (s.find("vec4 effect") != std::string::npos)
+            return true;
+        if (s.find("extern ") != std::string::npos)
+            return true;
+        if (s.find("uniform ") != std::string::npos)
+            return true;
+        if (s.find("sampler") != std::string::npos)
+            return true;
+        return false;
+    };
+
     // Wii U: map GLSL sources (*.fs, *.frag) to precompiled GSH location
     auto mapToGsh = [](const std::string& in) {
         // If already a .gsh or absolute shaders path, keep as-is
@@ -3104,7 +3124,16 @@ int Wrap_Graphics::newShader(lua_State* L)
     mappedPaths.reserve(filepaths.size());
     if (!filepaths.empty())
     {
-        if (filepaths.size() == 1)
+        if (filepaths.size() == 1 && isLikelyInlineShaderSource(filepaths[0]))
+        {
+            std::ofstream debugInline(logPath, std::ios::app);
+            if (debugInline.is_open())
+            {
+                debugInline << "[DEBUG] Wrap_Graphics::newShader() - Skipping .gsh path mapping for inline shader source" << std::endl;
+                debugInline.close();
+            }
+        }
+        else if (filepaths.size() == 1)
         {
             std::string g = mapToGsh(filepaths[0]);
             mappedPaths.push_back(g); // Wii U GSH holds both stages
@@ -3146,8 +3175,9 @@ int Wrap_Graphics::newShader(lua_State* L)
                 debugFile4.close();
             }
         }
+        bool hasInlineSourcePrimary = !filepaths.empty() && isLikelyInlineShaderSource(filepaths[0]);
         const auto& primary = mappedPaths.empty() ? filepaths : mappedPaths;
-        if (allPathsExist(primary))
+        if (!hasInlineSourcePrimary && allPathsExist(primary))
         {
             triedPrimary = true;
             shader = graphics->newShader(primary, options);

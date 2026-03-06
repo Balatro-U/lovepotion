@@ -34,6 +34,7 @@ ppc-zlib
 ppc-libpng
 ppc-libjpeg-turbo
 ppc-freetype
+ppc-brotli
 ppc-libogg
 ppc-libvorbis
 ppc-libvorbisidec

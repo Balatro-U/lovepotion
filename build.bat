@@ -7,11 +7,15 @@ cls
 
 echo Building LOVE Potion for Wii U using Docker (%BUILD_TYPE% build)...
 
-echo Starting Docker...
-docker desktop start
+echo Checking Docker...
+docker info >nul 2>&1
+if %ERRORLEVEL% neq 0 (
+    echo Docker is not running. Start Docker Desktop and try again.
+    exit /b 1
+)
 
 REM Build Docker image
-rmdir /s /q build
+if exist "build" rmdir /s /q build
 echo Building Docker image...
 docker build --build-arg BUILD_TYPE=%BUILD_TYPE% -f Dockerfile.wiiu -t lovepotion-wiiu .
 
